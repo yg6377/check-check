@@ -323,7 +323,8 @@ export const AttendanceTab: React.FC = () => {
       r.checkOutAt,
       getDayType(r.workDate, holidays),
       worker.employmentType,
-      settings
+      settings,
+      r.workDate
     );
     const isManDay = worker.employmentType === "daily" || worker.employmentType === "business";
 

@@ -394,7 +394,8 @@ export const WorkerPortal: React.FC = () => {
         record.checkOutAt,
         getDayType(record.workDate, holidays),
         me.employmentType,
-        settings
+        settings,
+        record.workDate
       );
       return sum + breakdown.manDays;
     }, 0);
@@ -409,7 +410,8 @@ export const WorkerPortal: React.FC = () => {
       record.checkOutAt,
       getDayType(record.workDate, holidays),
       me.employmentType,
-      settings
+      settings,
+      record.workDate
     ).manDays;
   };
   const openDateSheet = () => {

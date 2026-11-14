@@ -4,6 +4,7 @@ import { AllSettings, AttendanceSnapRule, Holiday, SnapDayType, SnapKind } from 
 import { DEFAULT_DEPARTMENT_OPTIONS, DEFAULT_JOB_OPTIONS, DEFAULT_RANK_OPTIONS } from "../constants/workerOptions";
 import { DEFAULT_SETTINGS } from "../data/defaults";
 import { DEFAULT_TIME_ZONE, TIME_ZONE_OPTIONS } from "../utils/datetime";
+import { ManDayTableEditor } from "./ManDayTableEditor";
 import {
   Settings,
   Building,
@@ -322,6 +323,8 @@ export const SettingsTab: React.FC = () => {
     e.preventDefault();
     const data = new FormData(e.currentTarget);
     const updated = {
+      // manDayTable(정산 테이블) 등 이 폼에 없는 값이 지워지지 않도록 기존 값을 먼저 펼친다
+      ...settings.dailyWorkerRules,
       earlyMorningStart: data.get("earlyMorningStart") as string,
       earlyMorningEnd: data.get("earlyMorningEnd") as string,
       earlyMorningWorkDays: Number(data.get("earlyMorningWorkDays")),
@@ -457,6 +460,16 @@ export const SettingsTab: React.FC = () => {
           }`}
         >
           <span className="flex items-center gap-2"><Coins className="w-3.5 h-3.5 text-blue-500" /> 탭 3: 수당 가산율</span>
+          <ChevronRight className="w-3 h-3 opacity-60" />
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab("manDayTable")}
+          className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
+            activeSubTab === "manDayTable" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+          }`}
+        >
+          <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-blue-500" /> 일용/사업소득 정산 테이블</span>
           <ChevronRight className="w-3 h-3 opacity-60" />
         </button>
 
@@ -1198,6 +1211,8 @@ export const SettingsTab: React.FC = () => {
             </div>
           </div>
         )}
+
+        {activeSubTab === "manDayTable" && <ManDayTableEditor />}
 
         {activeSubTab === "ordinaryWage" && (
           <form onSubmit={saveOrdinaryWage} className="space-y-6">
