@@ -2,12 +2,16 @@ import type {
   AllSettings,
   AttendanceSnapRule,
   Holiday,
+  ManDayDayType,
+  ManDayRow,
+  ManDayShift,
   SnapDayType,
   SnapKind,
   WorkTimeSettings,
   Worker,
 } from "../types";
 import { DEFAULT_TIME_ZONE, getAppTimeZone, getZonedClockMinutes } from "./datetime";
+import { DEFAULT_MAN_DAY_TABLE, DEFAULT_NIGHT_SHIFT_START_TIME } from "../data/defaults";
 
 function hhmmToMinutes(value: string): number {
   const [hours, minutes] = value.split(":").map(Number);
@@ -40,12 +44,6 @@ function overlapWorkMinutes(
     );
   }
   return Math.max(0, baseMinutes - breakMinutes);
-}
-
-function getBaseManDays(netHours: number, standardHours: number): number {
-  if (netHours <= 0) return 0;
-  if (netHours <= standardHours / 2) return 0.5;
-  return 1;
 }
 
 /**
@@ -129,6 +127,99 @@ export function isHolidayDate(workDate: string, holidays: Holiday[]): boolean {
   return holidays.some((h) => h.date === workDate);
 }
 
+// ============================================================
+// 일용/사업소득 공수 — "급여정산 테이블" 방식
+// ============================================================
+
+function isValidHHMM(value: string | undefined): value is string {
+  return !!value && /^\d{1,2}:\d{2}$/.test(value);
+}
+
+/**
+ * 근무일을 정산 테이블의 요일 구분(평일/토요일/일요일 표)으로 바꾼다.
+ *
+ * 엑셀 수식 그대로: 일요일 또는 "평일에 걸린 공휴일" → 일요일 표, 토요일 → 토요일 표, 그 외 → 평일 표.
+ * (엑셀 표의 제목은 "토요일/공휴일"이지만 실제 수식은 평일 공휴일을 일요일 표로 보낸다. 수식을 따른다.)
+ * 토요일과 겹친 공휴일은 토요일 표, 일요일과 겹친 공휴일은 일요일 표.
+ * workDate가 없어 실제 요일을 모르는 공휴일은 일요일 표로 본다.
+ */
+export function resolveManDayDayType(dayType: SnapDayType, workDate?: string): ManDayDayType {
+  if (dayType !== "holiday") return dayType;
+  if (workDate) {
+    const parsed = new Date(`${workDate}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime()) && parsed.getDay() === 6) return "saturday";
+  }
+  return "sunday";
+}
+
+export interface ManDayCalcInput {
+  inMinutes: number; // 출근 벽시계 분 (타각 보정 후)
+  outMinutes: number; // 퇴근 벽시계 분 (타각 보정 후). 자정 넘김 +1440 이 붙어 있어도 된다
+  dayType: ManDayDayType;
+  table?: ManDayRow[]; // 미지정 시 DEFAULT_MAN_DAY_TABLE
+  nightShiftStartTime?: string; // 미지정 시 "15:00"
+}
+
+export interface ManDayCalcResult {
+  manDays: number;
+  shift: ManDayShift;
+  appliedRows: ManDayRow[]; // 합산에 들어간 행
+}
+
+/**
+ * 정산 테이블에서 하루 공수를 계산한다 (엑셀 "급여정산 테이블" 수식과 동일한 규칙).
+ *
+ * 1. 출근 시각 ≥ 야간조 기준(15:00)이면 야간조 표, 아니면 주간조 표.
+ * 2. 해당 조·요일 표에서 "출근 ≤ 시작 AND 퇴근 ≥ 종료"인 행의 공수를 모두 더한다.
+ *    구간을 끝까지 채우지 못한 행은 0. (겹친 시간만큼 비례 계산하지 않는다)
+ * 3. countable=false(안내용 합계·식사시간) 행은 더하지 않는다.
+ * 4. outBefore가 있는 행은 퇴근이 그 시각보다 빠를 때만 적용한다(오후 조기퇴근).
+ * 5. 자정 넘김:
+ *    - 주간조: 퇴근이 05:00 미만이면 +24시간. 종료가 시작보다 이르거나 같은 행(22:00~00:00)은 종료 +24시간.
+ *    - 야간조: 12:00 미만인 시각(행의 시작·종료, 퇴근, 조건 시각)에 +24시간.
+ */
+export function calculateManDaysFromTable(input: ManDayCalcInput): ManDayCalcResult {
+  const table = input.table ?? DEFAULT_MAN_DAY_TABLE;
+  const nightStart = hhmmToMinutes(
+    isValidHHMM(input.nightShiftStartTime) ? input.nightShiftStartTime : DEFAULT_NIGHT_SHIFT_START_TIME
+  );
+  const wrap = (m: number) => ((m % 1440) + 1440) % 1440;
+  const inClock = wrap(input.inMinutes);
+  const outClock = wrap(input.outMinutes);
+  const shift: ManDayShift = inClock >= nightStart ? "night" : "day";
+
+  const nightAdjust = (m: number) => (m < 720 ? m + 1440 : m);
+  const outAt = shift === "day" ? (outClock < 300 ? outClock + 1440 : outClock) : nightAdjust(outClock);
+
+  const appliedRows: ManDayRow[] = [];
+  let total = 0;
+  for (const row of table) {
+    if (row.shift !== shift || row.dayType !== input.dayType) continue;
+    if (!row.countable) continue;
+    if (!isValidHHMM(row.fromTime) || !isValidHHMM(row.toTime)) continue;
+    if (!Number.isFinite(row.manDays)) continue;
+
+    let from = hhmmToMinutes(row.fromTime);
+    let to = hhmmToMinutes(row.toTime);
+    let outLimit = isValidHHMM(row.outBefore) ? hhmmToMinutes(row.outBefore) : undefined;
+    if (shift === "day") {
+      if (to <= from) to += 1440;
+    } else {
+      from = nightAdjust(from);
+      to = nightAdjust(to);
+      if (outLimit !== undefined) outLimit = nightAdjust(outLimit);
+    }
+
+    if (inClock > from || outAt < to) continue;
+    if (outLimit !== undefined && outAt >= outLimit) continue;
+
+    appliedRows.push(row);
+    total += row.manDays;
+  }
+
+  return { manDays: Math.round(total * 10000) / 10000, shift, appliedRows };
+}
+
 export interface DailyBreakdown {
   workHours: number; // 총 근무(점심 제외)
   regularHours: number; // 소정근로 (평일, standardDailyHours 한도)
@@ -154,13 +245,17 @@ const EMPTY_BREAKDOWN: DailyBreakdown = {
  *
  * 주의: 정밀한 노동법 산정(주 단위 연장 합산, 통상임금 환산 등)이 아니라
  * 설정값(소정시간/야간시간대/공수규칙) 기반의 화면 표시용 근사 분해다.
+ *
+ * workDate("YYYY-MM-DD")는 일용/사업소득 정산 테이블의 요일 표 선택에 쓰인다
+ * (공휴일이 실제로 무슨 요일인지 알아야 함). 생략하면 공휴일은 일요일 표로 계산한다.
  */
 export function calculateDailyBreakdown(
   checkInISO: string | null,
   checkOutISO: string | null,
   dayType: SnapDayType,
   employmentType: Worker["employmentType"],
-  settings: AllSettings
+  settings: AllSettings,
+  workDate?: string
 ): DailyBreakdown {
   if (!checkInISO || !checkOutISO) return { ...EMPTY_BREAKDOWN };
 
@@ -216,28 +311,17 @@ export function calculateDailyBreakdown(
   nightMinutes += overlapMinutes(startMinutes, endMinutes, nightStart + 1440, nightEnd + 1440);
   const nightHours = Math.max(0, nightMinutes / 60);
 
-  // ── 일용/사업소득자: 공수(man-day) 분해 ──
+  // ── 일용/사업소득자: 공수(man-day)는 "급여정산 테이블"에서 찾는다 ──
+  // 예전의 조출/오후연장/저녁연장 고정 가산 + 휴일 배율(holidayRate) 수식은 쓰지 않는다.
+  // (그 설정값들은 아래 시급제 연장 판정과 급여 시뮬레이터에서만 계속 사용)
   if (employmentType === "daily" || employmentType === "business") {
-    const standardHours = workTime.standardDailyHours || 8;
-    let manDays = getBaseManDays(netHours, standardHours);
-
-    const inWindow = (startHHMM: string, endHHMM: string): boolean => {
-      const ws = hhmmToMinutes(startHHMM);
-      let we = hhmmToMinutes(endHHMM);
-      if (we <= ws) we += 1440;
-      return overlapMinutes(startMinutes, endMinutes, ws, we) > 0;
-    };
-
-    if (inWindow(dailyWorkerRules.earlyMorningStart, dailyWorkerRules.earlyMorningEnd)) {
-      manDays += dailyWorkerRules.earlyMorningWorkDays;
-    }
-    if (inWindow(dailyWorkerRules.afternoonOvertimeStart, dailyWorkerRules.afternoonOvertimeEnd)) {
-      manDays += dailyWorkerRules.afternoonOvertimeWorkDays;
-    }
-    if (inWindow(dailyWorkerRules.eveningOvertimeStart, dailyWorkerRules.eveningOvertimeEnd)) {
-      manDays += dailyWorkerRules.eveningOvertimeWorkDays;
-    }
-    if (isHoliday) manDays *= dailyWorkerRules.holidayRate;
+    const { manDays } = calculateManDaysFromTable({
+      inMinutes: startMinutes,
+      outMinutes: endMinutes,
+      dayType: resolveManDayDayType(dayType, workDate),
+      table: dailyWorkerRules.manDayTable,
+      nightShiftStartTime: dailyWorkerRules.nightShiftStartTime,
+    });
 
     return {
       ...EMPTY_BREAKDOWN,
