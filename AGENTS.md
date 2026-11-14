@@ -34,7 +34,7 @@ npm install
 cp .env.example .env.local   # VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY 채우기
 npm run dev                  # vite, 포트 3000, --host 0.0.0.0 (모바일 실기기 테스트용)
 npm run build
-npm run lint                 # tsc --noEmit — 유일한 자동 검증 수단 (supabase/functions 는 Deno 코드라 검사 제외)
+npm run lint                 # tsc --noEmit — 프런트 검증 수단 (supabase/functions 는 Deno 코드라 검사 제외, MCP 계산은 5절의 deno test)
 ```
 
 `src/supabase.ts`는 환경변수가 없으면 **모듈 로드 시점에 throw** 합니다. `.env.local` 없이는 앱이 뜨지 않습니다.
@@ -57,7 +57,11 @@ npm run lint                 # tsc --noEmit — 유일한 자동 검증 수단 (
 │   ├── policies.sql                # RLS 정책 (재실행 안전)
 │   ├── seed.sql                    # settings 8종 + 공휴일 시드 (멱등)
 │   ├── bootstrap_first_admin.sql   # 첫 관리자 계정 생성 안내
-│   └── migrations/001~012_*.sql    # 순차 적용 마이그레이션
+│   ├── migrations/001~012_*.sql    # 순차 적용 마이그레이션
+│   ├── config.toml                 # Edge Function 배포 옵션 (verify_jwt = false)
+│   └── functions/                  # Edge Function (Deno — tsc 검사 제외)
+│       ├── health/                 # 대시보드용 운영 지표 (집계만)
+│       └── mcp/                    # 읽기 전용 MCP 서버 (index.ts, calc.ts, calc.test.ts) — 5절 참고
 └── src/
     ├── main.tsx
     ├── App.tsx                     # 로그인 게이트 → 역할별 분기 (Admin 5탭 / Worker 포털)
@@ -197,6 +201,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 - 타각 보정(`snapRules`)이 먼저 적용된 시각으로 계산합니다. `excelExporter.ts`도 같은 함수를 호출합니다 — 공수 수식을 다른 곳에 다시 구현하지 마세요.
 - `dailyWorkerRules`의 `earlyMorning*` / `afternoonOvertime*` / `eveningOvertime*` / `holidayRate`는 일용·사업소득 공수에는 더 이상 쓰이지 않지만 **삭제 금지**: 시급제 연장 판정과 `payrollCalculator.ts` 시뮬레이터가 계속 씁니다.
 - 표를 바꿔도 이미 확정된 근태(`attendance_segments`)는 바뀌지 않고, 미확정 행만 새 규칙으로 계산됩니다.
+- **`attendanceHours.ts`·`datetime.ts`·`DEFAULT_MAN_DAY_TABLE`은 `supabase/functions/mcp/calc.ts`에 복사본이 있습니다(MCP 서버용). 한쪽을 고치면 다른 쪽도 같이 고치고 `calc.test.ts`를 돌리세요** — 아래 "읽기 전용 MCP 서버" 절 참고.
 
 ### 급여 계산 — `payrollCalculator.ts`
 
@@ -212,6 +217,23 @@ DB는 `timestamptz`, 프런트엔드의 표시·판정은 `settings.site.timezon
 
 `exportLaborLedger`(노무대장) / `exportPayslips`(급여명세서) / `exportAttendanceBook`(근태부) 3종. 노무대장은 근로자 1인당 구분 6행(출근/퇴근/연장/휴일/휴일연장/야간) 구조입니다.
 
+### 읽기 전용 MCP 서버 — `supabase/functions/mcp`
+
+AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 양식을 채우게 하는 Edge Function입니다. **조회만 합니다. 쓰기 도구를 추가하지 마세요**(사용자 결정).
+
+- **경로:** `https://<프로젝트 ref>.supabase.co/functions/v1/mcp`. MCP Streamable HTTP, 상태 없음(세션 없음) + JSON 응답. POST만 받고 GET/DELETE는 405. 공식 SDK(`@modelcontextprotocol/sdk`)의 `WebStandardStreamableHTTPServerTransport`를 요청마다 새로 만듭니다.
+- **인증:** `Authorization: Bearer <토큰>`의 SHA-256을 함수 시크릿 **`MCP_TOKEN_SHA256`**(16진수 64자)과 비교합니다. 시크릿이 없으면 모든 요청이 401입니다. 토큰 원문은 저장소·함수 어디에도 없습니다(해시만 시크릿에). `supabase/config.toml`의 `verify_jwt = false`가 있어야 게이트웨이에서 막히지 않습니다. DB는 함수 안에서만 service role로 읽습니다.
+- **토큰 교체:** 새 토큰을 만들어 해시를 `supabase secrets set MCP_TOKEN_SHA256=<새 해시>`로 덮어쓰면 즉시 옛 토큰이 무효가 됩니다(재배포 불필요). 명령은 `README.md` 참고. `health` 함수는 아직 해시가 코드에 박혀 있어 교체하려면 코드 수정 + 재배포가 필요합니다.
+- **도구 5개:** `list_workers`, `get_attendance(from, to, worker_code?)`, `get_monthly_summary(month, worker_code?)`, `get_settings`, `get_holidays(year)`. 기간은 한 번에 최대 93일.
+- **노출 범위(화이트리스트):** 근로자는 사번·이름·고용유형·부서/직급/직종·입사일/퇴사일·단가 3종만. 근태는 근무일·출퇴근 시각·상태·확정 segments만. 설정은 `index.ts`의 `pick()` 목록에 적힌 키만. **주민번호·계좌·연락처·주소·좌표·QR 코드(`checkinCode`)·관리자 메모(`note`)는 select조차 하지 않습니다.** 컬럼을 늘릴 때 `select('*')`를 쓰지 말고 목록에 명시하세요.
+- **계산:** 확정된 행은 `attendance_segments`(규칙은 `segmentsToBreakdown()`과 동일 — `index.ts`에 같은 이름의 복사본이 있으니 segment_type을 추가하면 함께 수정), 미확정 행은 `calc.ts`의 `calculateDailyBreakdown()`. `calc.ts`는 프런트 유틸의 **복사본**입니다. 원본이 확장자 없는 import를 쓰는 Vite 코드라 Deno 번들이 직접 가져올 수 없어서입니다.
+- **복사본 동등성 테스트** (원본과 3만 건 조합 비교 + 공수 정답표):
+  ```bash
+  deno test --no-check --sloppy-imports --allow-read --allow-env supabase/functions/mcp/calc.test.ts
+  ```
+  `attendanceHours.ts`·`datetime.ts`·`defaults.ts`의 공수표를 고친 뒤에는 `calc.ts`에 같은 수정을 넣고 이 테스트를 통과시킨 다음 함수를 재배포해야 합니다. 그러지 않으면 앱 화면과 AI가 채운 엑셀의 미확정 공수가 달라집니다.
+- 배포는 수동입니다(`supabase functions deploy mcp`). CI가 없으므로 코드를 고쳐도 재배포 전에는 운영에 반영되지 않습니다.
+
 ---
 
 ## 6. 알려진 상태 · 미구현
@@ -222,7 +244,7 @@ DB는 `timestamptz`, 프런트엔드의 표시·판정은 `settings.site.timezon
 - **연차 관리** — `annualLeave` 설정값만 있고 발생/소진 추적 화면 없음
 - **은행 이체 연동** — 계좌 정보 수집만, 펌뱅킹 API 없음
 - **연말정산 / 원천징수영수증** 없음
-- **테스트 0건 / CI 없음** — 검증 수단은 `npm run lint`(tsc)뿐
+- **프런트 테스트 0건 / CI 없음** — 검증 수단은 `npm run lint`(tsc)와 MCP 계산 복사본의 `deno test`(5절)뿐
 
 ### 정리 대상 (동작에는 영향 없음)
 
