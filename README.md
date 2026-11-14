@@ -120,3 +120,20 @@ Claude Desktop 등 `mcpServers` 설정 파일을 쓰는 클라이언트 (`mcp-re
 ```bash
 deno test --no-check --sloppy-imports --allow-read --allow-env supabase/functions/mcp/calc.test.ts
 ```
+
+## Claude Code 플러그인 — `/checkin`
+
+한 달 근태를 읽어 엑셀 노무대장 양식의 출근·퇴근 칸을 채웁니다. (읽기 전용 MCP 서버 사용)
+
+```bash
+/plugin install check-check --marketplace yg6377/checkin-app
+```
+
+준비물 (저장소에는 넣지 않습니다 — 개인정보·비밀값):
+
+- 접속 토큰: `~/.config/check-check/mcp-token.txt` (또는 환경변수 `CHECK_CHECK_MCP_TOKEN`)
+- 노무대장 양식: `~/.config/check-check/template.xlsx`
+
+사용: Claude Code에서 `/checkin 11월` → `~/Downloads/26년11월노무대장_checkcheck.xlsx` 생성.
+스크립트(`plugin/scripts/fill_ledger.py`)는 '전체' 시트의 연·월 칸과 출근·퇴근 칸만 바꾸고, 공수·수당은 양식의 수식이 계산합니다.
+

@@ -4,7 +4,7 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, LocateFixed, MapPin, RotateCcw, Save } from "lucide-react";
 import { SiteSettings } from "../types";
-import { isSiteLocationUnset, isValidLatLng } from "../utils/geo";
+import { geocodeAddress, isSiteLocationUnset, isValidLatLng } from "../utils/geo";
 
 // 지도(leaflet)는 이 화면을 열 때만 내려받는다.
 const SiteMap = lazy(() => import("./SiteMap"));
@@ -37,7 +37,9 @@ export const SiteLocationEditor: React.FC<{
     allowedRadius: number;
     siteLocationSet: true;
   }) => Promise<void>;
-}> = ({ site, onSave }) => {
+  /** 주소 입력란에서 Enter 를 누르면 바뀐다. nonce 가 달라질 때마다 그 주소로 좌표를 찾는다. */
+  addressSearch?: { address: string; nonce: number } | null;
+}> = ({ site, onSave, addressSearch }) => {
   const [draft, setDraft] = useState<Draft>(() => toDraft(site));
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -105,6 +107,44 @@ export const SiteLocationEditor: React.FC<{
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
+
+  // 주소로 좌표 찾기 — draft 만 바꾼다. 저장은 관리자가 지도를 확인한 뒤 직접 누른다.
+  const searchNonce = addressSearch?.nonce;
+  useEffect(() => {
+    const address = addressSearch?.address.trim();
+    if (!searchNonce || !address) return;
+    const ctrl = new AbortController();
+    setLocating(true);
+    setMessage({ kind: "info", text: `"${address}" 위치를 찾는 중…` });
+    geocodeAddress(address, ctrl.signal)
+      .then((hit) => {
+        if (!hit) {
+          setMessage({
+            kind: "error",
+            text: "주소로 위치를 찾지 못했습니다. 지도를 클릭하거나 [현재 위치를 기준점으로]를 이용해 주세요.",
+          });
+          return;
+        }
+        pick(hit.lat, hit.lng);
+        setMessage({
+          kind: "info",
+          text:
+            (hit.approximate
+              ? `주소 전체로는 찾지 못해 "${hit.matchedQuery}"까지만 찾았습니다(대략적인 위치). `
+              : `지도를 "${hit.label}" 근처로 옮겼습니다. `) +
+            "건물 위치까지 정확하지 않을 수 있으니, 핀을 현장 위치로 끌어 맞춘 뒤 [저장]을 눌러 주세요.",
+        });
+      })
+      .catch((e: any) => {
+        if (e?.name === "AbortError") return;
+        setMessage({ kind: "error", text: "주소 검색에 실패했습니다. 잠시 후 다시 시도해 주세요." });
+      })
+      .finally(() => {
+        if (!ctrl.signal.aborted) setLocating(false);
+      });
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchNonce]);
 
   const save = async () => {
     if (!valid || saving) return;

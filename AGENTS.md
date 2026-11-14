@@ -168,6 +168,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 - 코드는 `settings.site` 문서의 `data->>'checkinCode'`에 **현장당 하나, 정적으로** 보관됩니다. 시간 만료나 자동 회전이 없어 관리자가 수동 재발급할 때까지 계속 유효합니다.
 - `submit_attendance`가 검증하는 것: ① 근로자 계정 로그인 여부(`current_worker_id()`) ② 퇴사 여부(`retire_date`) ③ QR 코드 문자열 일치 ④ 당일 중복 출근/퇴근 ⑤ 퇴근 전 출근 선행.
 - **위치 기록(012):** `WorkerPortal`이 스캐너를 열 때 `navigator.geolocation`을 병렬로 요청하고, 좌표가 있으면 `submit_attendance(scanned_code, action, p_lat, p_lng, p_accuracy)`로 함께 보냅니다. 서버가 haversine 거리를 계산해 `attendance.check_in/out_lat·lng·accuracy_m·distance_m·within_geo`에 씁니다. 좌표가 없으면 전부 NULL. 위치 계산은 별도 예외 블록 안에 있어 어떤 입력에도 타각을 실패시키지 않습니다.
+- **주소로 좌표 찾기:** 현장 주소란에서 Enter → `geo.ts`의 `geocodeAddress()`(OpenStreetMap Nominatim, 키 없음)가 좌표를 찾아 지도 draft만 옮깁니다(저장은 관리자가 직접). 시골 도로명 주소는 읍·시 단위까지만 찾아지므로 "대략적인 위치" 안내를 띄웁니다. 정확도를 높이려면 이 함수만 카카오 주소 검색 등으로 바꾸면 됩니다.
 - **`settings.site.siteLocationSet`이 `true`일 때만 거리·반경 판정을 합니다.** 관리자가 `SiteLocationEditor`(Leaflet + OpenStreetMap, "현재 위치를 기준점으로" 버튼)에서 저장하면 true가 됩니다. 좌표 값으로 "미설정"을 추측하지 마세요 — 운영 DB에는 예전 가짜 지도를 눌러 생긴 `37.123, 126.457`이 들어 있었고, 시드 더미 `37.1234, 126.4567`과 달라 값 비교로는 걸러지지 않았습니다. 프런트 판정은 `utils/geo.ts`의 `isSiteLocationUnset()`.
 - 인자 3개에 기본값이 있어 옛 버전 PWA의 2인자 호출도 그대로 동작합니다. 이 함수를 다시 고칠 때는 오버로드가 두 개 남지 않도록 기존 시그니처를 DROP하고 012 정의를 기준으로 전체를 재작성하세요.
 - 관리자 화면: `AttendanceTab`의 출퇴근 시각 옆 "현장 밖 · 거리" 배지(`within_geo === false`일 때만). `health` Edge Function의 "현장 밖 타각" 지표도 같은 컬럼을 봅니다.
@@ -242,6 +243,15 @@ AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 �
   ```
   `attendanceHours.ts`·`datetime.ts`·`defaults.ts`의 공수표를 고친 뒤에는 `calc.ts`에 같은 수정을 넣고 이 테스트를 통과시킨 다음 함수를 재배포해야 합니다. 그러지 않으면 앱 화면과 AI가 채운 엑셀의 미확정 공수가 달라집니다.
 - 배포는 수동입니다(`supabase functions deploy mcp`). CI가 없으므로 코드를 고쳐도 재배포 전에는 운영에 반영되지 않습니다.
+- **앱 안 안내 화면:** 운영 규칙 설정 > "MCP 서버 설정"(`McpSettingsPanel.tsx`)이 서버 주소와 연결 명령을 보여 줍니다. 토큰은 표시하지 않습니다(앱은 토큰을 모릅니다).
+
+### Claude Code 플러그인 — `plugin/` (`/checkin`)
+
+`/checkin 11월`처럼 부르면 한 달 근태를 엑셀 노무대장 양식에 채웁니다. 마켓플레이스 정의는 저장소 루트 `.claude-plugin/marketplace.json`, 플러그인 본체는 `plugin/`.
+
+- 스킬(`plugin/skills/checkin/SKILL.md`)은 달을 `YYYY-MM`으로 정해 `plugin/scripts/fill_ledger.py`를 실행만 합니다. 스크립트가 MCP 서버의 `get_attendance`를 직접 호출합니다(한 달 치를 AI가 읽어 옮기지 않도록).
+- 스크립트는 양식 '전체' 시트의 **U1(연)·X1(월)과 출근·퇴근 행의 P~AT열(1~31일)만** 바꿉니다. 근로자 행은 B열 사번 + O열 "출근"/"퇴근"으로 찾습니다. 공수·수당은 양식 수식이 계산하므로, 넣는 값은 인정 시각(`check_in/out_recognized`)의 시간 분수입니다. xlsx를 통째로 다시 쓰지 않고 해당 칸 XML만 바꿉니다(표준 라이브러리만 사용).
+- **이 저장소는 공개입니다. 양식 파일(근로자 주민번호·계좌 포함)과 토큰은 절대 커밋하지 마세요.** 둘 다 사용자 컴퓨터의 `~/.config/check-check/`(`template.xlsx`, `mcp-token.txt`)에 둡니다.
 
 ---
 
