@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Save,
   CheckCircle2,
+  MapPin,
 } from "lucide-react";
 import {
   exportLaborLedger,
@@ -39,6 +40,7 @@ import {
   getZonedYmd,
   zonedWallTimeToUtcIso,
 } from "../utils/datetime";
+import { formatDistance } from "../utils/geo";
 
 // ============================================================
 // 날짜 헬퍼
@@ -1103,6 +1105,7 @@ export const AttendanceTab: React.FC = () => {
                     >
                       <LogIn className="w-3 h-3" />
                       {formatZonedTime(r.checkInAt, tz)}
+                      <OffSiteBadge within={r.checkInWithinGeo} distanceM={r.checkInDistanceM} />
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 ${
@@ -1115,6 +1118,7 @@ export const AttendanceTab: React.FC = () => {
                     >
                       <LogOut className="w-3 h-3" />
                       {formatZonedTime(r.checkOutAt, tz)}
+                      <OffSiteBadge within={r.checkOutWithinGeo} distanceM={r.checkOutDistanceM} />
                     </span>
                   </div>
 
@@ -1260,6 +1264,7 @@ export const AttendanceTab: React.FC = () => {
                       <span className="inline-flex items-center gap-1">
                         <LogIn className="w-3 h-3" />
                         {formatZonedTime(r.checkInAt, tz)}
+                        <OffSiteBadge within={r.checkInWithinGeo} distanceM={r.checkInDistanceM} />
                       </span>
                     </Td>
                     <Td
@@ -1274,6 +1279,7 @@ export const AttendanceTab: React.FC = () => {
                       <span className="inline-flex items-center gap-1">
                         <LogOut className="w-3 h-3" />
                         {formatZonedTime(r.checkOutAt, tz)}
+                        <OffSiteBadge within={r.checkOutWithinGeo} distanceM={r.checkOutDistanceM} />
                       </span>
                     </Td>
                     <Td className="text-center font-mono font-bold tabular-nums text-slate-800">
@@ -1666,6 +1672,20 @@ const BreakdownCell: React.FC<{ label: string; value: string; strong?: boolean }
     </p>
   </div>
 );
+
+// 타각 위치가 현장 반경 밖으로 기록된 경우에만 보이는 표시. (위치 없음·기준점 미설정이면 within 이 null 이라 숨김)
+const OffSiteBadge: React.FC<{ within: boolean | null; distanceM: number | null }> = ({ within, distanceM }) => {
+  if (within !== false) return null;
+  return (
+    <span
+      title="현장 반경 밖에서 찍힌 기록입니다. 출퇴근은 정상 등록되었습니다."
+      className="ml-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded border border-amber-300 bg-amber-50 px-1 py-px text-[10px] font-bold text-amber-800"
+    >
+      <MapPin className="w-2.5 h-2.5" />
+      현장 밖{distanceM != null ? ` ${formatDistance(distanceM)}` : ""}
+    </span>
+  );
+};
 
 const SummaryCard: React.FC<{
   icon: React.ReactNode;

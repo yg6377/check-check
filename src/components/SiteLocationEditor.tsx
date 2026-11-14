@@ -4,7 +4,7 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, LocateFixed, MapPin, RotateCcw, Save } from "lucide-react";
 import { SiteSettings } from "../types";
-import { isPlaceholderSiteLocation, isValidLatLng } from "../utils/geo";
+import { isSiteLocationUnset, isValidLatLng } from "../utils/geo";
 
 // 지도(leaflet)는 이 화면을 열 때만 내려받는다.
 const SiteMap = lazy(() => import("./SiteMap"));
@@ -32,7 +32,11 @@ function round6(n: number): number {
 
 export const SiteLocationEditor: React.FC<{
   site: SiteSettings;
-  onSave: (next: { siteLocation: { lat: number; lng: number }; allowedRadius: number }) => Promise<void>;
+  onSave: (next: {
+    siteLocation: { lat: number; lng: number };
+    allowedRadius: number;
+    siteLocationSet: true;
+  }) => Promise<void>;
 }> = ({ site, onSave }) => {
   const [draft, setDraft] = useState<Draft>(() => toDraft(site));
   const [saving, setSaving] = useState(false);
@@ -52,8 +56,11 @@ export const SiteLocationEditor: React.FC<{
   const lat = Number(draft.lat);
   const lng = Number(draft.lng);
   const valid = draft.lat.trim() !== "" && draft.lng.trim() !== "" && isValidLatLng(lat, lng);
-  const dirty = lat !== Number(savedLat) || lng !== Number(savedLng) || draft.radius !== Number(savedRadius);
-  const savedIsPlaceholder = isPlaceholderSiteLocation(site.siteLocation);
+  const savedIsPlaceholder = isSiteLocationUnset(site);
+  // 기준점을 한 번도 저장한 적이 없으면, 값을 바꾸지 않아도 "이 위치로 확정" 저장을 할 수 있어야 한다.
+  const dirty =
+    savedIsPlaceholder ||
+    lat !== Number(savedLat) || lng !== Number(savedLng) || draft.radius !== Number(savedRadius);
 
   // 입력 중 좌표가 잠시 유효하지 않아도 지도는 마지막 유효 위치를 유지한다.
   const mapCenter = useMemo(
@@ -104,7 +111,7 @@ export const SiteLocationEditor: React.FC<{
     setSaving(true);
     setMessage(null);
     try {
-      await onSave({ siteLocation: { lat, lng }, allowedRadius: draft.radius });
+      await onSave({ siteLocation: { lat, lng }, allowedRadius: draft.radius, siteLocationSet: true });
       setMessage({ kind: "ok", text: "현장 기준점과 반경을 저장했습니다." });
     } catch (e: any) {
       setMessage({ kind: "error", text: e?.message || "저장하지 못했습니다." });

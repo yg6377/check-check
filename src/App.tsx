@@ -7,7 +7,7 @@ import { AttendanceTab } from "./components/AttendanceTab";
 import { ExpiryTab } from "./components/ExpiryTab";
 import { WorkerPortal } from "./components/WorkerPortal";
 import { AuthRole } from "./utils/auth";
-import { isPlaceholderSiteLocation } from "./utils/geo";
+import { isSiteLocationUnset } from "./utils/geo";
 import { LanguageProvider, languageOptions, useLanguage } from "./i18n";
 import {
   Users,
@@ -260,7 +260,7 @@ const AdminPortal: React.FC = () => {
                 <p className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-blue-400" />
                   <strong>현장 기준점:</strong>{" "}
-                  {isPlaceholderSiteLocation(settings.site.siteLocation)
+                  {isSiteLocationUnset(settings.site)
                     ? "미설정"
                     : `${settings.site.siteLocation.lat}, ${settings.site.siteLocation.lng}`}
                 </p>

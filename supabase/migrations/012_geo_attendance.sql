@@ -97,12 +97,13 @@ BEGIN
       v_site_lng := (v_site->'siteLocation'->>'lng')::double precision;
       v_radius   := (v_site->>'allowedRadius')::double precision;
 
-      -- 기준점이 없거나 시드의 더미 좌표(37.1234, 126.4567) 그대로면 "미설정"으로 본다.
-      -- 이때는 좌표만 남기고 거리·반경 판정은 하지 않는다(전원이 '현장 밖'으로 찍히는 것을 방지).
-      IF v_site_lat IS NOT NULL AND v_site_lng IS NOT NULL
+      -- 관리자가 현장 설정 화면에서 기준점을 저장한 적이 없으면(siteLocationSet 이 true 가 아니면) "미설정".
+      -- 좌표 값으로는 판단하지 않는다: 시드의 더미 좌표나 예전 가짜 지도를 눌러 생긴 좌표도 실제 현장이 아니다.
+      -- 미설정이면 좌표만 남기고 거리·반경 판정은 하지 않는다(전원이 '현장 밖'으로 찍히는 것을 방지).
+      IF COALESCE(v_site->>'siteLocationSet', '') = 'true'
+         AND v_site_lat IS NOT NULL AND v_site_lng IS NOT NULL
          AND v_site_lat BETWEEN -90 AND 90
-         AND v_site_lng BETWEEN -180 AND 180
-         AND NOT (v_site_lat = 37.1234 AND v_site_lng = 126.4567) THEN
+         AND v_site_lng BETWEEN -180 AND 180 THEN
         -- haversine (지구 반지름 6,371,000m)
         v_dist_raw := 2 * 6371000 * asin(LEAST(1.0, sqrt(
             power(sin(radians(v_lat::double precision - v_site_lat) / 2), 2)

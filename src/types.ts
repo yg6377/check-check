@@ -105,6 +105,9 @@ export interface SiteSettings {
   siteAddress: string; // "충남 당진시 신평면 ..."
   siteLocation: { lat: number; lng: number };
   allowedRadius: number; // meters, e.g., 100
+  // 관리자가 현장 설정 화면에서 기준점을 직접 저장했는지. true 일 때만 타각 거리·반경 판정을 한다.
+  // (좌표 값만으로는 "아직 안 정한 더미 좌표"와 구분할 수 없어 별도 표시를 둔다.)
+  siteLocationSet?: boolean;
   paymentDay: number; // e.g., 15
   timezone?: string; // IANA 타임존, e.g., "Asia/Seoul" (미설정 시 Asia/Seoul로 간주)
   checkinCode?: string; // 현장 출퇴근 QR 코드 (regenerate_site_checkin_code RPC 가 발급·저장)

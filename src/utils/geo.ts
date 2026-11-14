@@ -1,18 +1,15 @@
 // 현장 위치(기준점) 관련 공용 헬퍼.
 // 위치는 출퇴근을 "막는" 용도가 아니라 거리·반경 내 여부를 "기록·표시"하는 용도다.
 
-// seed.sql / DEFAULT_SETTINGS 에 들어 있는 더미 기준점.
-// 이 값 그대로면 "기준점 미설정"으로 본다 (submit_attendance RPC 도 같은 값을 미설정으로 취급).
-export const PLACEHOLDER_SITE_LOCATION = { lat: 37.1234, lng: 126.4567 } as const;
-
-export function isPlaceholderSiteLocation(
-  loc: { lat: number; lng: number } | null | undefined
+// 기준점이 "아직 설정되지 않았는지" 판정한다.
+// 좌표 값으로는 판단하지 않는다 — 시드의 더미 좌표뿐 아니라 예전 가짜 지도를 눌러 생긴 좌표도
+// 실제 현장이 아니기 때문이다. 관리자가 현장 설정 화면에서 저장하면 siteLocationSet 이 true 가 되고,
+// submit_attendance RPC 도 같은 표시를 보고 거리·반경 판정 여부를 정한다.
+export function isSiteLocationUnset(
+  site: { siteLocation?: { lat: number; lng: number } | null; siteLocationSet?: boolean } | null | undefined
 ): boolean {
-  if (!loc) return true;
-  const lat = Number(loc.lat);
-  const lng = Number(loc.lng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
-  return lat === PLACEHOLDER_SITE_LOCATION.lat && lng === PLACEHOLDER_SITE_LOCATION.lng;
+  if (!site || site.siteLocationSet !== true || !site.siteLocation) return true;
+  return !isValidLatLng(Number(site.siteLocation.lat), Number(site.siteLocation.lng));
 }
 
 export function isValidLatLng(lat: number, lng: number): boolean {
