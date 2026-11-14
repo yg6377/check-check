@@ -7,6 +7,7 @@ import { AttendanceTab } from "./components/AttendanceTab";
 import { ExpiryTab } from "./components/ExpiryTab";
 import { WorkerPortal } from "./components/WorkerPortal";
 import { AuthRole } from "./utils/auth";
+import { isPlaceholderSiteLocation } from "./utils/geo";
 import { LanguageProvider, languageOptions, useLanguage } from "./i18n";
 import {
   Users,
@@ -258,10 +259,13 @@ const AdminPortal: React.FC = () => {
               <div className="hidden sm:block bg-slate-850 p-2 px-3 rounded-lg border border-slate-700 text-[10px] font-mono text-slate-300 space-y-0.5 shadow-inner">
                 <p className="flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-blue-400" />
-                  <strong>현장좌표:</strong> {settings.site.siteLocation.lat}, {settings.site.siteLocation.lng}
+                  <strong>현장 기준점:</strong>{" "}
+                  {isPlaceholderSiteLocation(settings.site.siteLocation)
+                    ? "미설정"
+                    : `${settings.site.siteLocation.lat}, ${settings.site.siteLocation.lng}`}
                 </p>
                 <p>
-                  <strong>인가 반경:</strong> {settings.site.allowedRadius}m / <strong>급여지급:</strong> 매월 {settings.site.paymentDay}일
+                  <strong>현장 반경(기록용):</strong> {settings.site.allowedRadius}m / <strong>급여지급:</strong> 매월 {settings.site.paymentDay}일
                 </p>
               </div>
             )}

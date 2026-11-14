@@ -4,6 +4,7 @@ import type { Html5Qrcode } from "html5-qrcode";
 import { languageOptions, languageToLocale, useLanguage } from "../i18n";
 import { formatZonedTime, getAppTimeZone, getZonedYmd } from "../utils/datetime";
 import { calculateDailyBreakdown, getDayType } from "../utils/attendanceHours";
+import { AttendanceLocation, formatDistance } from "../utils/geo";
 import {
   HardHat,
   LogIn,
@@ -16,6 +17,7 @@ import {
   Camera,
   CalendarDays,
   ChevronLeft,
+  MapPin,
 } from "lucide-react";
 
 // ============================================================
@@ -59,9 +61,25 @@ function withTimeout<T>(p: Promise<T>, ms: number, timeoutError?: Error): Promis
   }) as Promise<T>;
 }
 
+// 위치 수집 상태. 어떤 상태든 타각은 진행된다(위치는 기록·표시용).
+type GeoStatus = "pending" | "ready" | "denied" | "unavailable";
+
+// 위치 조회 제한 시간. QR 인식보다 늦으면 위치 없이 타각한다.
+const GEO_TIMEOUT_MS = 8000;
+// QR 이 먼저 읽혔는데 위치가 아직 "조회 중"일 때만 잠깐 더 기다리는 시간.
+// (QR 인식이 GPS 보다 빠른 경우가 흔해, 이 유예가 없으면 대부분 위치 없이 찍힌다)
+const GEO_GRACE_MS = 2000;
+
+// 결과 화면에 보여 줄 위치 판정
+interface AttendanceGeoResult {
+  hadLocation: boolean;      // 위치를 서버로 보냈는지
+  distanceM: number | null;
+  withinGeo: boolean | null; // null = 판정 불가(위치 없음 또는 기준점 미설정)
+}
+
 const ScannerModal: React.FC<{
   action: "in" | "out";
-  onScan: (code: string) => Promise<void>;
+  onScan: (code: string, location: AttendanceLocation | null) => Promise<void>;
   onClose: () => void;
 }> = ({ action, onScan, onClose }) => {
   const { t } = useLanguage();
@@ -74,11 +92,75 @@ const ScannerModal: React.FC<{
   const [status, setStatus] = useState<"idle" | "scanning" | "processing" | "error">("idle");
   const [error, setError] = useState<string>("");
   const [debug, setDebug] = useState<string>("");
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("pending");
+  const locationRef = useRef<AttendanceLocation | null>(null);
+  const geoStatusRef = useRef<GeoStatus>("pending");
+  const geoWaitersRef = useRef<Array<() => void>>([]);
 
   useEffect(() => {
     onScanRef.current = onScan;
     onCloseRef.current = onClose;
   }, [onScan, onClose]);
+
+  // 모달이 열리면 카메라와 "병렬로" 위치 조회를 시작한다.
+  // 권한 거부·실패·시간 초과는 전부 "위치 없이 타각"으로 이어질 뿐, 타각을 막지 않는다.
+  useEffect(() => {
+    let cancelled = false;
+    const settle = (next: GeoStatus, location: AttendanceLocation | null) => {
+      if (cancelled || geoStatusRef.current !== "pending") return;
+      locationRef.current = location;
+      geoStatusRef.current = next;
+      setGeoStatus(next);
+      const waiters = geoWaitersRef.current;
+      geoWaitersRef.current = [];
+      waiters.forEach((resolve) => resolve());
+    };
+
+    // HTTPS(또는 localhost)가 아니면 geolocation 자체가 없거나 즉시 실패한다.
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      settle("unavailable", null);
+      return;
+    }
+
+    // 일부 브라우저는 timeout 옵션을 지키지 않고 콜백을 영영 부르지 않는 경우가 있어 자체 타이머도 둔다.
+    const guard = setTimeout(() => settle("unavailable", null), GEO_TIMEOUT_MS + 500);
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          settle("ready", {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
+          });
+        },
+        (err) => {
+          settle(err?.code === 1 /* PERMISSION_DENIED */ ? "denied" : "unavailable", null);
+        },
+        { enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: 30000 }
+      );
+    } catch {
+      settle("unavailable", null);
+    }
+
+    return () => {
+      cancelled = true;
+      clearTimeout(guard);
+    };
+  }, []);
+
+  // QR 인식 시점의 위치를 돌려준다. 아직 조회 중이면 GEO_GRACE_MS 까지만 기다린다.
+  const takeLocation = useCallback(async (): Promise<AttendanceLocation | null> => {
+    if (geoStatusRef.current === "pending") {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, GEO_GRACE_MS);
+        geoWaitersRef.current.push(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    }
+    return locationRef.current;
+  }, []);
 
   const stopScannerSafely = useCallback(async () => {
     const scanner = scannerRef.current;
@@ -143,12 +225,16 @@ const ScannerModal: React.FC<{
             setStatus("processing");
 
             // 스캐너 정지는 best-effort — hang/실패해도 무시하고 제출은 진행.
-            await withTimeout(stopScannerSafely(), 3000).catch(() => {});
+            // 그 사이 위치 조회도 병렬로 마무리를 기다린다(최대 GEO_GRACE_MS, 실패해도 null).
+            const [, location] = await Promise.all([
+              withTimeout(stopScannerSafely(), 3000).catch(() => {}),
+              takeLocation().catch(() => null),
+            ]);
 
             try {
               // 제출이 멈춰도 화면이 "처리 중" 에 갇히지 않도록 타임아웃.
               await withTimeout(
-                onScanRef.current(decodedText),
+                onScanRef.current(decodedText, location),
                 15000,
                 new Error(t("processError"))
               );
@@ -185,7 +271,7 @@ const ScannerModal: React.FC<{
       cancelled = true;
       void stopScannerSafely();
     };
-  }, [scannerElementId, stopScannerSafely, t]);
+  }, [scannerElementId, stopScannerSafely, takeLocation, t]);
 
   const handleCloseClick = useCallback(async () => {
     if (closingRef.current) return;
@@ -246,6 +332,23 @@ const ScannerModal: React.FC<{
             </div>
           )}
           {status === "idle" && <p className="text-slate-500">{t("cameraChecking")}</p>}
+          <p
+            className={`mt-2 flex items-start gap-1.5 text-[11px] ${
+              geoStatus === "ready"
+                ? "text-emerald-600"
+                : geoStatus === "pending"
+                  ? "text-slate-400"
+                  : "text-amber-600"
+            }`}
+          >
+            <MapPin className={`w-3.5 h-3.5 shrink-0 mt-px ${geoStatus === "pending" ? "animate-pulse" : ""}`} />
+            <span>
+              {geoStatus === "pending" && t("geoLocating")}
+              {geoStatus === "ready" && t("geoReady")}
+              {geoStatus === "denied" && t("geoDenied")}
+              {geoStatus === "unavailable" && t("geoUnavailable")}
+            </span>
+          </p>
           {debug && (
             <p className="mt-2 text-[10px] font-mono text-slate-400 break-all border-t border-slate-100 pt-2">
               진단: {debug}
@@ -259,8 +362,9 @@ const ScannerModal: React.FC<{
 
 const AttendanceResultModal: React.FC<{
   action: "in" | "out";
+  geo: AttendanceGeoResult | null;
   onConfirm: () => void;
-}> = ({ action, onConfirm }) => {
+}> = ({ action, geo, onConfirm }) => {
   const { t } = useLanguage();
   const isCheckIn = action === "in";
 
@@ -288,6 +392,33 @@ const AttendanceResultModal: React.FC<{
           <p className="mt-2 text-sm text-slate-500">
             {t("confirmReturn")}
           </p>
+
+          {/* 위치 판정 — 기록·표시용. 현장 밖이어도 타각은 이미 정상 처리된 상태다. */}
+          {geo?.withinGeo === false && (
+            <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-left text-amber-800">
+              <MapPin className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold">{t("geoOutside")}</p>
+                {geo.distanceM != null && (
+                  <p className="text-[11px] mt-0.5">
+                    {t("geoDistanceFromSite").replace("{distance}", formatDistance(geo.distanceM))}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          {geo?.withinGeo === true && (
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-emerald-600">
+              <MapPin className="w-3.5 h-3.5" />
+              {t("geoInside")}
+            </p>
+          )}
+          {geo && !geo.hadLocation && (
+            <p className="mt-4 flex items-center justify-center gap-1.5 text-[11px] text-slate-400">
+              <MapPin className="w-3.5 h-3.5" />
+              {t("geoNotRecorded")}
+            </p>
+          )}
         </div>
 
         <div className="px-5 pb-5">
@@ -317,6 +448,7 @@ export const WorkerPortal: React.FC = () => {
   const [recordsError, setRecordsError] = useState("");
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [resultAction, setResultAction] = useState<"in" | "out" | null>(null);
+  const [resultGeo, setResultGeo] = useState<AttendanceGeoResult | null>(null);
   const [historyFromDate, setHistoryFromDate] = useState(() => currentMonthStartYmd(tz));
   const [historyToDate, setHistoryToDate] = useState(() => getZonedYmd(new Date(), tz));
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
@@ -368,11 +500,16 @@ export const WorkerPortal: React.FC = () => {
   const checkedIn = !!todayAttendance?.checkInAt;
   const checkedOut = !!todayAttendance?.checkOutAt;
 
-  const handleScan = useCallback(async (code: string) => {
+  const handleScan = useCallback(async (code: string, location: AttendanceLocation | null) => {
     if (!scannerAction) return;
     const action = scannerAction;
-    await submitAttendance(code.trim(), action);
+    const result = await submitAttendance(code.trim(), action, location);
     await loadAttendanceHistory();
+    setResultGeo({
+      hadLocation: !!location,
+      distanceM: result.distanceM,
+      withinGeo: result.withinGeo,
+    });
     setResultAction(action);
     setScannerAction(null);
   }, [scannerAction, submitAttendance, loadAttendanceHistory]);
@@ -693,7 +830,11 @@ export const WorkerPortal: React.FC = () => {
       {resultAction && (
         <AttendanceResultModal
           action={resultAction}
-          onConfirm={() => setResultAction(null)}
+          geo={resultGeo}
+          onConfirm={() => {
+            setResultAction(null);
+            setResultGeo(null);
+          }}
         />
       )}
 

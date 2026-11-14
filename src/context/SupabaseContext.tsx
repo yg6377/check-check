@@ -4,6 +4,7 @@ import { supabase } from "../supabase";
 import { AllSettings, Worker, Holiday, SettingsHistory, AttendanceStatus } from "../types";
 import { calculateWorkedHours } from "../utils/attendanceHours";
 import { getAppTimeZone, getZonedYmd } from "../utils/datetime";
+import type { AttendanceLocation } from "../utils/geo";
 import { adminIdToEmail, workerIdToEmail, roleFromEmail, AuthRole } from "../utils/auth";
 
 const LOGIN_MODE_KEY = "checkin-login-mode";
@@ -157,7 +158,11 @@ interface AppContextType {
 
   // QR 출퇴근
   regenerateSiteCheckinCode: () => Promise<string>;
-  submitAttendance: (scannedCode: string, action: "in" | "out") => Promise<void>;
+  submitAttendance: (
+    scannedCode: string,
+    action: "in" | "out",
+    location?: AttendanceLocation | null
+  ) => Promise<SubmitAttendanceResult>;
   refreshTodayAttendance: () => Promise<void>;
 
   // 근태 조회
@@ -180,6 +185,13 @@ export interface TodayAttendance {
   checkOutAt: string | null;
 }
 
+// submit_attendance RPC 의 위치 판정 결과.
+// 위치를 못 보냈거나 현장 기준점이 미설정이면 둘 다 null.
+export interface SubmitAttendanceResult {
+  distanceM: number | null;
+  withinGeo: boolean | null;
+}
+
 export interface AttendanceRecord {
   id: string;
   workerId: string;        // workers.id
@@ -192,6 +204,11 @@ export interface AttendanceRecord {
   workHours: number;       // 계산값 (시간 단위)
   confirmedBreakdown: AttendanceBreakdownValues | null;
   confirmedAt: string | null;
+  // 타각 위치 판정 (기록·표시용 — 타각을 막지 않음). 위치 없이 찍었으면 null.
+  checkInDistanceM: number | null;
+  checkInWithinGeo: boolean | null;
+  checkOutDistanceM: number | null;
+  checkOutWithinGeo: boolean | null;
 }
 
 export interface AttendanceBreakdownValues {
@@ -636,7 +653,7 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       category: "site",
       action: "update",
       label: "현장 출퇴근 QR 코드가 재발급되었습니다.",
-      fromValue: { checkinCode: settings?.site && (settings.site as any).checkinCode },
+      fromValue: { checkinCode: settings?.site?.checkinCode },
       toValue: { checkinCode: data },
     });
     await loadSettings();
@@ -644,21 +661,51 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return data as string;
   };
 
-  const submitAttendance = async (scannedCode: string, action: "in" | "out") => {
+  const submitAttendance = async (
+    scannedCode: string,
+    action: "in" | "out",
+    location?: AttendanceLocation | null
+  ): Promise<SubmitAttendanceResult> => {
     if (!user) throw new Error("로그인이 필요합니다.");
-    const { error } = await supabase.rpc("submit_attendance", {
-      scanned_code: scannedCode,
-      action,
-    });
+    const baseArgs = { scanned_code: scannedCode, action };
+    const hasLocation =
+      !!location && Number.isFinite(location.lat) && Number.isFinite(location.lng);
+
+    let { data, error } = hasLocation
+      ? await supabase.rpc("submit_attendance", {
+          ...baseArgs,
+          p_lat: location!.lat,
+          p_lng: location!.lng,
+          p_accuracy:
+            location!.accuracy != null && Number.isFinite(location!.accuracy)
+              ? location!.accuracy
+              : null,
+        })
+      : await supabase.rpc("submit_attendance", baseArgs);
+
+    // 012 마이그레이션이 아직 적용되지 않은 DB(2인자 함수만 존재)에서는
+    // 위치 인자를 붙인 호출이 "함수 없음(PGRST202)"으로 실패한다.
+    // 위치 때문에 타각이 막히면 안 되므로 위치 없이 한 번 더 시도한다.
+    if (error && hasLocation && error.code === "PGRST202") {
+      ({ data, error } = await supabase.rpc("submit_attendance", baseArgs));
+    }
     if (error) throw new Error(translateRpcError(error.message));
+
     await refreshTodayAttendance();
+
+    const result = (data ?? {}) as { distance_m?: number | string | null; within_geo?: boolean | null };
+    const distance = result.distance_m == null ? NaN : Number(result.distance_m);
+    return {
+      distanceM: Number.isFinite(distance) ? distance : null,
+      withinGeo: typeof result.within_geo === "boolean" ? result.within_geo : null,
+    };
   };
 
   const fetchAttendance = async (q: AttendanceQuery): Promise<AttendanceRecord[]> => {
     if (!user) return [];
     let query = supabase
       .from("attendance")
-      .select("id, worker_id, work_date, check_in_at, check_out_at, status, worker:workers(worker_id, name), attendance_segments(segment_type, hours, man_days, created_at)")
+      .select("id, worker_id, work_date, check_in_at, check_out_at, status, check_in_distance_m, check_in_within_geo, check_out_distance_m, check_out_within_geo, worker:workers(worker_id, name), attendance_segments(segment_type, hours, man_days, created_at)")
       .gte("work_date", q.fromDate)
       .lte("work_date", q.toDate)
       .order("work_date", { ascending: false })
@@ -693,6 +740,11 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         workHours: Math.max(0, workHours),
         confirmedBreakdown: segmentsToBreakdown(row.attendance_segments),
         confirmedAt: latestSegmentTimestamp(row.attendance_segments),
+        // numeric 컬럼은 PostgREST 가 문자열로 줄 수 있어 Number 로 정규화한다.
+        checkInDistanceM: row.check_in_distance_m == null ? null : Number(row.check_in_distance_m),
+        checkInWithinGeo: row.check_in_within_geo ?? null,
+        checkOutDistanceM: row.check_out_distance_m == null ? null : Number(row.check_out_distance_m),
+        checkOutWithinGeo: row.check_out_within_geo ?? null,
       };
     });
   };

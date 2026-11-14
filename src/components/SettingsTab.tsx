@@ -18,7 +18,6 @@ import {
   Save,
   Plus,
   Trash2,
-  MapPin,
   ChevronRight,
   Info,
   QrCode,
@@ -26,6 +25,7 @@ import {
   Printer,
 } from "lucide-react";
 import QRCode from "qrcode";
+import { SiteLocationEditor } from "./SiteLocationEditor";
 
 export const SettingsTab: React.FC = () => {
   const { settings, updateSetting, holidays, addHoliday, deleteHoliday, history, regenerateSiteCheckinCode } = useFirebase();
@@ -35,7 +35,7 @@ export const SettingsTab: React.FC = () => {
 
   // settings.site.checkinCode 가 바뀌면 QR 이미지 재생성
   React.useEffect(() => {
-    const code = (settings?.site as any)?.checkinCode as string | undefined;
+    const code = settings?.site?.checkinCode;
     if (!code) {
       setQrDataUrl("");
       return;
@@ -46,7 +46,7 @@ export const SettingsTab: React.FC = () => {
   }, [settings]);
 
   const handleRegenerateQr = async () => {
-    const hasCode = !!(settings?.site as any)?.checkinCode;
+    const hasCode = !!settings?.site?.checkinCode;
     if (hasCode && !window.confirm("기존 QR 코드는 즉시 무효화되고 새 코드로 교체됩니다. 진행할까요?")) {
       return;
     }
@@ -94,10 +94,6 @@ export const SettingsTab: React.FC = () => {
   const [newRankOption, setNewRankOption] = useState("");
   const [newJobOption, setNewJobOption] = useState("");
 
-  // Map settings
-  const [mapWidth] = useState(500);
-  const [mapHeight] = useState(250);
-
   if (
     !settings ||
     !settings.site ||
@@ -116,29 +112,6 @@ export const SettingsTab: React.FC = () => {
       </div>
     );
   }
-
-  // Handle map canvas click to change GPS marker
-  const handleMapClick = (e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = e.currentTarget;
-    const rect = svg.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Map X,Y to pseudo GPS offsets centered around lat:37.1234, lng:126.4567
-    const latSpan = 0.05;
-    const lngSpan = 0.1;
-    
-    const calculatedLat = 37.1234 - ((y / mapHeight) - 0.5) * latSpan;
-    const calculatedLng = 126.4567 + ((x / mapWidth) - 0.5) * lngSpan;
-
-    updateSetting("site", {
-      ...settings.site,
-      siteLocation: {
-        lat: Number(calculatedLat.toFixed(5)),
-        lng: Number(calculatedLng.toFixed(5)),
-      },
-    });
-  };
 
   const saveWorkTime = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -547,7 +520,7 @@ export const SettingsTab: React.FC = () => {
                 <Building className="w-5 h-5 text-gray-500" />
                 회사 정보 및 건설현장 지리 정보 (Site Settings)
               </h3>
-              <p className="text-xs text-gray-400 mt-1">회사명, 공용 주소, 및 가용 출퇴근 GPS 체크인 반경을 구성합니다.</p>
+              <p className="text-xs text-gray-400 mt-1">회사명·현장 주소와 출퇴근 위치 기록에 쓰는 현장 기준점·반경을 구성합니다.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -570,51 +543,6 @@ export const SettingsTab: React.FC = () => {
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">현장 GPS 지좌 기준점 Lat / Lng</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={settings.site.siteLocation.lat}
-                      onChange={(e) => updateSetting("site", {
-                        ...settings.site,
-                        siteLocation: { ...settings.site.siteLocation, lat: Number(e.target.value) }
-                      })}
-                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-mono"
-                    />
-                    <input
-                      type="number"
-                      step="0.00001"
-                      value={settings.site.siteLocation.lng}
-                      onChange={(e) => updateSetting("site", {
-                        ...settings.site,
-                        siteLocation: { ...settings.site.siteLocation, lng: Number(e.target.value) }
-                      })}
-                      className="px-3 py-1.5 border border-gray-200 rounded-lg text-sm font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1">
-                    인증 허용 출퇴근 반경 (Allowed Radius): <span className="text-blue-600 font-extrabold">{settings.site.allowedRadius}m</span>
-                  </label>
-                  <input
-                    type="range"
-                    min="50"
-                    max="1000"
-                    step="50"
-                    value={settings.site.allowedRadius}
-                    onChange={(e) => updateSetting("site", { ...settings.site, allowedRadius: Number(e.target.value) })}
-                    className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-                    <span>50m (초타이트)</span>
-                    <span>1,000m (광역 인정)</span>
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">매달 정기 급여 지급일 (Payment Day)</label>
                   <select
@@ -645,65 +573,11 @@ export const SettingsTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pseudo Location Map */}
-              <div className="space-y-3">
-                <span className="block text-xs font-semibold text-gray-500 mb-1">
-                  GPS 가상 위성 지도 (지도 클릭 위치가 출적 체크인 기준점으로 주소 지정됩니다)
-                </span>
-                <div className="relative border border-gray-200 rounded-xl overflow-hidden bg-sky-50 shadow-inner flex flex-col items-center justify-center">
-                  
-                  {/* Styled Interactive SVG Map Grid */}
-                  <svg
-                    width="100%"
-                    height={mapHeight}
-                    onClick={handleMapClick}
-                    className="cursor-crosshair select-none bg-emerald-50/20"
-                    id="site-gps-widget"
-                  >
-                    {/* Background decoration grid */}
-                    <defs>
-                      <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" strokeWidth="0.8" />
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-
-                    {/* Virtual Roadlines */}
-                    <path d="M 0 100 Q 250 80 500 120" fill="none" stroke="#cbd5e1" strokeWidth="15" opacity="0.6"/>
-                    <path d="M 120 0 Q 150 120 180 250" fill="none" stroke="#cbd5e1" strokeWidth="10" opacity="0.6"/>
-
-                    {/* Blue Location Area Radius (allowedRadius / max 1000m scaling) */}
-                    <circle
-                      cx={mapWidth / 2}
-                      cy={mapHeight / 2}
-                      r={Math.min(100, Math.max(25, (settings.site.allowedRadius / 1000) * 120))}
-                      fill="#3b82f6"
-                      fillOpacity="0.12"
-                      stroke="#2563eb"
-                      strokeWidth="1.5"
-                      strokeDasharray="4"
-                    />
-
-                    {/* GPS Pin */}
-                    <circle cx={mapWidth / 2} cy={mapHeight / 2} r="6" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
-                    
-                    {/* Text Overlay */}
-                    <text x="15" y="25" fill="#475569" fontSize="10" fontFamily="monospace">
-                      [현장 중심좌 기준 GPS 전개]
-                    </text>
-                  </svg>
-
-                  <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-200 font-mono text-[11px] text-gray-700 shadow-sm">
-                    <p className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-red-500" />
-                      COORD: {settings.site.siteLocation.lat}, {settings.site.siteLocation.lng}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-[11px] text-gray-400 italic">
-                  * 위성 지도 내 중심점을 둘러싼 점선은 지정된 반경({settings.site.allowedRadius}m)의 GPS 출퇴근 인가 권역입니다.
-                </p>
-              </div>
+              {/* 현장 기준점 지도 + 위도·경도·반경 (draft → [저장]) */}
+              <SiteLocationEditor
+                site={settings.site}
+                onSave={(next) => updateSetting("site", { ...settings.site, ...next })}
+              />
             </div>
 
             {/* 현장 출퇴근 QR */}
@@ -728,9 +602,9 @@ export const SettingsTab: React.FC = () => {
                       아직 QR 코드가<br />발급되지 않았습니다.
                     </div>
                   )}
-                  {(settings.site as any)?.checkinCode && (
+                  {settings.site.checkinCode && (
                     <p className="mt-3 text-[10px] font-mono text-gray-400">
-                      코드: {(settings.site as any).checkinCode}
+                      코드: {settings.site.checkinCode}
                     </p>
                   )}
                 </div>
@@ -751,7 +625,7 @@ export const SettingsTab: React.FC = () => {
                     className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-800 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
-                    {(settings.site as any)?.checkinCode ? "QR 재발급" : "QR 최초 발급"}
+                    {settings.site.checkinCode ? "QR 재발급" : "QR 최초 발급"}
                   </button>
 
                   <button
