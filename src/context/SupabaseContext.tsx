@@ -190,6 +190,7 @@ export interface TodayAttendance {
 export interface SubmitAttendanceResult {
   distanceM: number | null;
   withinGeo: boolean | null;
+  timestamp: string | null; // 서버가 기록한 타각 시각(ISO). 지각 안내에 쓴다.
 }
 
 export interface AttendanceRecord {
@@ -693,11 +694,12 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await refreshTodayAttendance();
 
-    const result = (data ?? {}) as { distance_m?: number | string | null; within_geo?: boolean | null };
+    const result = (data ?? {}) as { distance_m?: number | string | null; within_geo?: boolean | null; timestamp?: string | null };
     const distance = result.distance_m == null ? NaN : Number(result.distance_m);
     return {
       distanceM: Number.isFinite(distance) ? distance : null,
       withinGeo: typeof result.within_geo === "boolean" ? result.within_geo : null,
+      timestamp: typeof result.timestamp === "string" ? result.timestamp : null,
     };
   };
 

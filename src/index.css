@@ -1,9 +1,80 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,100..900;1,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
 @import "tailwindcss";
 
+/* ============================================================
+   Check Check 테마
+   화면의 "배치"는 각 컴포넌트의 유틸리티 클래스가 정하고, "겉모습"(색·모서리·그림자·글꼴)은
+   여기 토큰이 정한다. 겉모습을 바꾸고 싶으면 컴포넌트를 고치지 말고 이 블록을 고칠 것.
+   - slate / gray / stone 은 같은 중립색(푸른 기가 도는 회색)으로 통일
+   - blue 는 포인트 색(주요 버튼·선택된 탭)
+   ============================================================ */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-slate-50: #f5f7fb;
+  --color-slate-100: #eceff6;
+  --color-slate-200: #e0e4ee;
+  --color-slate-300: #c9cfdd;
+  --color-slate-400: #8a93a8;
+  --color-slate-500: #636c81;
+  --color-slate-600: #4a5368;
+  --color-slate-700: #353d51;
+  --color-slate-800: #232a3c;
+  --color-slate-900: #171d2d;
+  --color-slate-950: #0d111c;
+
+  --color-gray-50: #f5f7fb;
+  --color-gray-100: #eceff6;
+  --color-gray-200: #e0e4ee;
+  --color-gray-300: #c9cfdd;
+  --color-gray-400: #8a93a8;
+  --color-gray-500: #636c81;
+  --color-gray-600: #4a5368;
+  --color-gray-700: #353d51;
+  --color-gray-800: #232a3c;
+  --color-gray-900: #171d2d;
+  --color-gray-950: #0d111c;
+
+  --color-stone-50: #f5f7fb;
+  --color-stone-100: #eceff6;
+
+  --color-blue-50: #eef2ff;
+  --color-blue-100: #dfe6ff;
+  --color-blue-200: #c4d0ff;
+  --color-blue-300: #9fb1ff;
+  --color-blue-400: #748cfb;
+  --color-blue-500: #4f6bf6;
+  --color-blue-600: #3f58ea;
+  --color-blue-700: #3146cc;
+  --color-blue-800: #2a3aa3;
+  --color-blue-900: #263480;
+  --color-blue-950: #19214f;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+
+  --shadow-xs: 0 1px 2px rgb(23 29 45 / 0.04);
+  --shadow-sm: 0 1px 2px rgb(23 29 45 / 0.04), 0 2px 6px rgb(23 29 45 / 0.05);
+  --shadow-md: 0 2px 4px rgb(23 29 45 / 0.04), 0 6px 14px rgb(23 29 45 / 0.07);
+  --shadow-lg: 0 4px 8px rgb(23 29 45 / 0.05), 0 12px 28px rgb(23 29 45 / 0.09);
+  --shadow-xl: 0 8px 16px rgb(23 29 45 / 0.06), 0 20px 44px rgb(23 29 45 / 0.11);
+  --shadow-2xl: 0 12px 24px rgb(23 29 45 / 0.07), 0 28px 64px rgb(23 29 45 / 0.14);
+}
+
+body {
+  background-color: var(--color-slate-50);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 기본 `rounded`(0.25rem)도 다른 모서리와 맞춰 조금 더 둥글게 */
+.rounded {
+  border-radius: 0.4rem;
 }
 
 .qr-scanner-shell video {

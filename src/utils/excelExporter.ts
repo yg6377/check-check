@@ -322,7 +322,7 @@ export async function exportLaborLedger(ctx: ExportContext): Promise<void> {
   const dim = daysInMonth(ctx.year, ctx.month);
   const tz = getAppTimeZone(ctx.settings);
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Workforce Core";
+  wb.creator = "Check Check";
   wb.created = new Date();
   const ws = wb.addWorksheet(`${ctx.year}년${ctx.month}월전체`, {
     views: [{ state: "frozen", xSplit: 13, ySplit: 4 }],
@@ -754,7 +754,7 @@ function computePaySummary(w: Worker, a: WorkerMonthAggregate, settings: AllSett
 
 export async function exportPayslips(ctx: ExportContext): Promise<void> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Workforce Core";
+  wb.creator = "Check Check";
   wb.created = new Date();
 
   const agg = aggregateMonth(ctx);
@@ -1022,7 +1022,7 @@ export async function exportPayslips(ctx: ExportContext): Promise<void> {
 
 export async function exportAttendanceBook(ctx: ExportContext): Promise<void> {
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Workforce Core";
+  wb.creator = "Check Check";
   wb.created = new Date();
   const tz = getAppTimeZone(ctx.settings);
 

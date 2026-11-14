@@ -216,7 +216,7 @@ export const SettingsTab: React.FC = () => {
           <button
             type="button"
             onClick={() => addWorkOption(key, fallback, value, setValue)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
           >
             <Plus className="w-3.5 h-3.5" /> 추가
           </button>
@@ -409,7 +409,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("site")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "site" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "site" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Building className="w-3.5 h-3.5 text-blue-500" /> 탭 1: 회사/현장 정보</span>
@@ -419,7 +419,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("workTime")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "workTime" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "workTime" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-blue-500" /> 탭 2: 근무 시간 규칙</span>
@@ -429,7 +429,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("overtime")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "overtime" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "overtime" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Coins className="w-3.5 h-3.5 text-blue-500" /> 탭 3: 수당 가산율</span>
@@ -439,7 +439,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("manDayTable")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "manDayTable" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "manDayTable" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-blue-500" /> 일용/사업소득 정산 테이블</span>
@@ -449,7 +449,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("ordinaryWage")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "ordinaryWage" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "ordinaryWage" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Coins className="w-3.5 h-3.5 text-blue-500" /> 탭 4: 통상임금 기준</span>
@@ -459,7 +459,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("insuranceTax")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "insuranceTax" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "insuranceTax" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-blue-500" /> 탭 5: 4대보험 & 세율</span>
@@ -469,7 +469,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("allowance")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "allowance" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "allowance" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><HeartHandshake className="w-3.5 h-3.5 text-blue-500" /> 탭 6: 수당 기본값</span>
@@ -479,7 +479,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("calendar")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "calendar" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "calendar" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-blue-500" /> 탭 7: 공휴일 관리</span>
@@ -489,7 +489,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("annualLeave")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "annualLeave" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "annualLeave" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-blue-500" /> 탭 8: 연차 설정</span>
@@ -622,7 +622,7 @@ export const SettingsTab: React.FC = () => {
                   <button
                     onClick={handleRegenerateQr}
                     disabled={regenerating}
-                    className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-800 disabled:opacity-50"
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-4 h-4 ${regenerating ? "animate-spin" : ""}`} />
                     {settings.site.checkinCode ? "QR 재발급" : "QR 최초 발급"}
@@ -760,7 +760,7 @@ export const SettingsTab: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-gray-800 transition"
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
                 >
                   <Save className="w-4 h-4" /> 일과 시간 보정안 저장
                 </button>
@@ -896,7 +896,7 @@ export const SettingsTab: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-gray-800 transition shadow mt-10"
+                    className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-blue-700 transition shadow mt-10"
                   >
                     <Save className="w-4 h-4" /> 가산 가중치 규정 저장
                   </button>
@@ -1002,7 +1002,7 @@ export const SettingsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={addSnapRule}
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
                 >
                   <Plus className="w-3.5 h-3.5" /> 규칙 추가
                 </button>
@@ -1137,7 +1137,7 @@ export const SettingsTab: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-gray-800 transition"
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
             >
               <Save className="w-4 h-4" /> 통상임금 기준 저장
             </button>
@@ -1318,7 +1318,7 @@ export const SettingsTab: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="w-full bg-purple-650 bg-gray-900 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-gray-800 transition shadow"
+                    className="w-full bg-purple-650 bg-blue-600 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition shadow"
                   >
                     원천 징수 세무 세율 저장
                   </button>
@@ -1383,7 +1383,7 @@ export const SettingsTab: React.FC = () => {
             <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                className="flex items-center gap-2 bg-gray-900 text-white font-semibold text-sm py-2 px-6 rounded-lg hover:bg-gray-800 transition shadow"
+                className="flex items-center gap-2 bg-blue-600 text-white font-semibold text-sm py-2 px-6 rounded-lg hover:bg-blue-700 transition shadow"
               >
                 <Save className="w-4 h-4" /> 공용 수당 기준표 저장
               </button>
@@ -1568,7 +1568,7 @@ export const SettingsTab: React.FC = () => {
                 <div className="flex justify-end pt-4">
                   <button
                     type="submit"
-                    className="w-full bg-gray-900 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-gray-800 transition shadow"
+                    className="w-full bg-blue-600 text-white font-semibold text-sm py-2 px-4 rounded-lg hover:bg-blue-700 transition shadow"
                   >
                     연차 산정 개편 저장
                   </button>

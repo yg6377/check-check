@@ -368,3 +368,45 @@ export function calculateDailyBreakdown(
     nightHours,
   };
 }
+
+// ============================================================
+// 지각 판정
+// ============================================================
+
+/** 지각 판정의 기준이 되는 출근 시각("HH:mm"). 근무시간 설정의 기본 출근 시각을 쓴다. */
+export function getLateBaseTime(settings: AllSettings | null | undefined): string {
+  const base = settings?.workTime?.defaultCheckIn;
+  return isValidHHMM(base) ? base : "08:00";
+}
+
+/**
+ * 출근 타각이 기준 시각보다 몇 분 늦었는지 돌려준다. 지각이 아니면 0.
+ *
+ * - 기준: 기본 출근 시각(보통 08:00)을 "넘기면" 지각. 08:00:59 까지는 지각이 아니고 08:01 부터 1분 지각.
+ * - 타각 보정(snapRules)과는 별개다. 08:20 출근은 공수 계산에서는 08:00 으로 인정되지만 지각 표시는 남는다.
+ * - 야간조(출근이 nightShiftStartTime 이후, 기본 15:00)는 요일마다 시작 시각이 달라 판정하지 않는다.
+ * - 저장하지 않고 출근 시각에서 그때그때 계산한다(관리자가 출근 시각을 고치면 표시도 따라 바뀐다).
+ */
+export function getLateMinutes(
+  checkInISO: string | null | undefined,
+  settings: AllSettings | null | undefined
+): number {
+  if (!checkInISO || !settings) return 0;
+  const at = new Date(checkInISO);
+  if (Number.isNaN(at.getTime())) return 0;
+
+  const clock = getZonedClockMinutes(at, getAppTimeZone(settings));
+  const nightStartRaw = settings.dailyWorkerRules?.nightShiftStartTime;
+  const nightStart = hhmmToMinutes(isValidHHMM(nightStartRaw) ? nightStartRaw : DEFAULT_NIGHT_SHIFT_START_TIME);
+  if (clock >= nightStart) return 0;
+
+  return Math.max(0, clock - hhmmToMinutes(getLateBaseTime(settings)));
+}
+
+/** 지각 시간을 "12분" / "1시간 5분" 형태로 표기한다. */
+export function formatLateDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}분`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}시간` : `${h}시간 ${m}분`;
+}
