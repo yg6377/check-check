@@ -4,7 +4,7 @@ import { AllSettings, Worker, Holiday, SnapDayType } from "../types";
 import { AttendanceRecord } from "../context/SupabaseContext";
 import { getWorkerAllowances } from "./payrollCalculator";
 import { formatZonedTime, getAppTimeZone, getZonedClockMinutes } from "./datetime";
-import { getDayType, snapClockMinutes } from "./attendanceHours";
+import { calculateDailyBreakdown, getDayType, snapClockMinutes } from "./attendanceHours";
 
 // ============================================================
 // 공통 헬퍼
@@ -78,24 +78,6 @@ function hhmmToMin(s: string): number {
   return h * 60 + m;
 }
 
-function overlapsConfiguredWindow(
-  startMin: number,
-  endMin: number,
-  windowStart: string,
-  windowEnd: string
-): boolean {
-  const rangeStart = hhmmToMin(windowStart);
-  let rangeEnd = hhmmToMin(windowEnd);
-  if (rangeEnd <= rangeStart) rangeEnd += 1440;
-  return overlapMin(startMin, endMin, rangeStart, rangeEnd) > 0;
-}
-
-function baseManDays(netHours: number, standardHours: number): number {
-  if (netHours <= 0) return 0;
-  if (netHours <= standardHours / 2) return 0.5;
-  return 1;
-}
-
 /**
  * 하루 출퇴근 시각을 기본/연장/휴일/휴일연장/야간 시간으로 분해.
  * - 타각 보정 규칙(snapRules)으로 인정 시각을 먼저 보정한 뒤 계산 (화면 산정과 동일)
@@ -103,16 +85,24 @@ function baseManDays(netHours: number, standardHours: number): number {
  * - 평일: 기본 = min(net, 8h), 연장 = max(0, net - 8h)
  * - 휴일: 휴일 = min(net, 8h), 휴일연장 = max(0, net - 8h)
  * - 야간: 22:00~06:00 범위에 걸친 분량 (별도 표기, 합산에서 빠지지 않음 — 참고용)
+ * - 일용/사업소득: 화면과 같은 calculateDailyBreakdown()(급여정산 테이블)의 공수를 base에 그대로 담는다.
+ *   확정된 근태(getConfirmedDayHours)와 같은 모양이라 금액 = Σ공수 × 일급 이 된다.
  */
 function splitDayHours(
   worker: Worker,
   checkInISO: string | null,
   checkOutISO: string | null,
   dayType: SnapDayType,
-  settings: AllSettings
+  settings: AllSettings,
+  workDate: string
 ): { base: number; overtime: number; holiday: number; holidayOvertime: number; night: number } {
   if (!checkInISO || !checkOutISO) {
     return { base: 0, overtime: 0, holiday: 0, holidayOvertime: 0, night: 0 };
+  }
+
+  if (worker.employmentType === "daily" || worker.employmentType === "business") {
+    const b = calculateDailyBreakdown(checkInISO, checkOutISO, dayType, worker.employmentType, settings, workDate);
+    return { base: round2(b.manDays), overtime: 0, holiday: 0, holidayOvertime: 0, night: round2(b.nightHours) };
   }
 
   const inDate = new Date(checkInISO);
@@ -151,47 +141,6 @@ function splitDayHours(
   const netMin = endMin - startMin - lunchOverlap;
   const netHours = Math.max(0, netMin / 60);
   const std = settings.workTime.standardDailyHours;
-
-  const isDailyLike = worker.employmentType === "daily" || worker.employmentType === "business";
-  if (isDailyLike) {
-    const earlyMorningBonus = overlapsConfiguredWindow(
-      startMin,
-      endMin,
-      settings.dailyWorkerRules.earlyMorningStart,
-      settings.dailyWorkerRules.earlyMorningEnd
-    ) ? settings.dailyWorkerRules.earlyMorningWorkDays : 0;
-    const afternoonBonus = overlapsConfiguredWindow(
-      startMin,
-      endMin,
-      settings.dailyWorkerRules.afternoonOvertimeStart,
-      settings.dailyWorkerRules.afternoonOvertimeEnd
-    ) ? settings.dailyWorkerRules.afternoonOvertimeWorkDays : 0;
-    const eveningBonus = overlapsConfiguredWindow(
-      startMin,
-      endMin,
-      settings.dailyWorkerRules.eveningOvertimeStart,
-      settings.dailyWorkerRules.eveningOvertimeEnd
-    ) ? settings.dailyWorkerRules.eveningOvertimeWorkDays : 0;
-    const extraBonus = round2(earlyMorningBonus + afternoonBonus + eveningBonus);
-
-    if (isHoliday) {
-      return {
-        base: 0,
-        overtime: 0,
-        holiday: baseManDays(netHours, std) * settings.dailyWorkerRules.holidayRate,
-        holidayOvertime: extraBonus,
-        night: nightHours,
-      };
-    }
-
-    return {
-      base: baseManDays(netHours, std),
-      overtime: extraBonus,
-      holiday: 0,
-      holidayOvertime: 0,
-      night: nightHours,
-    };
-  }
 
   if (isHoliday) {
     return {
@@ -328,9 +277,10 @@ function aggregateMonth(ctx: ExportContext): WorkerMonthAggregate[] {
     for (let d = 1; d <= dim; d++) {
       const isH = holidayByDay.get(d)!;
       const rec = dayMap.get(d);
-      const dayType = getDayType(`${ctx.year}-${pad2(ctx.month)}-${pad2(d)}`, ctx.holidays);
+      const workDate = `${ctx.year}-${pad2(ctx.month)}-${pad2(d)}`;
+      const dayType = getDayType(workDate, ctx.holidays);
       const parts = getConfirmedDayHours(w, rec)
-        || splitDayHours(w, rec?.checkInAt || null, rec?.checkOutAt || null, dayType, ctx.settings);
+        || splitDayHours(w, rec?.checkInAt || null, rec?.checkOutAt || null, dayType, ctx.settings, workDate);
       if (rec?.checkInAt) workedDays += 1;
       byDay.set(d, {
         inAt: rec?.checkInAt || null,

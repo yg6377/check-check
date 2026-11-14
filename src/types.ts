@@ -47,7 +47,26 @@ export interface OvertimeRulesSettings {
   snapRules?: AttendanceSnapRule[]; // 타각 보정 규칙 목록 (미설정 시 보정 안 함)
 }
 
+// 일용/사업소득 "급여정산 테이블"의 한 행.
+// 출근 ≤ fromTime 이고 퇴근 ≥ toTime 인(구간을 끝까지 채운) 행의 공수를 모두 더한다.
+export type ManDayShift = "day" | "night"; // 주간조 / 야간조
+export type ManDayDayType = "weekday" | "saturday" | "sunday"; // 평일 표 / 토요일 표 / 일요일(+평일 공휴일) 표
+
+export interface ManDayRow {
+  id: string;
+  shift: ManDayShift;
+  dayType: ManDayDayType;
+  fromTime: string; // "HH:MM" 구간 시작
+  toTime: string; // "HH:MM" 구간 끝. "00:00"(또는 "24:00")은 밤 12시(자정)
+  manDays: number; // 이 구간을 채우면 더해지는 공수
+  countable: boolean; // false = 안내용 행(합계 표시·식사시간). 합산하지 않음
+  label?: string; // 메모(예: "오전", "점심시간")
+  outBefore?: string; // "HH:MM" — 퇴근이 이 시각보다 빠를 때만 적용 (오후 조기퇴근 행)
+}
+
 export interface DailyWorkerRulesSettings {
+  manDayTable?: ManDayRow[]; // 미설정 시 DEFAULT_MAN_DAY_TABLE(엑셀 원본) 사용
+  nightShiftStartTime?: string; // 출근이 이 시각 이후면 야간조 표 사용 (기본 "15:00")
   earlyMorningStart: string; // e.g., "05:00"
   earlyMorningEnd: string; // e.g., "08:00"
   earlyMorningWorkDays: number; // e.g., 0.5
@@ -86,8 +105,12 @@ export interface SiteSettings {
   siteAddress: string; // "충남 당진시 신평면 ..."
   siteLocation: { lat: number; lng: number };
   allowedRadius: number; // meters, e.g., 100
+  // 관리자가 현장 설정 화면에서 기준점을 직접 저장했는지. true 일 때만 타각 거리·반경 판정을 한다.
+  // (좌표 값만으로는 "아직 안 정한 더미 좌표"와 구분할 수 없어 별도 표시를 둔다.)
+  siteLocationSet?: boolean;
   paymentDay: number; // e.g., 15
   timezone?: string; // IANA 타임존, e.g., "Asia/Seoul" (미설정 시 Asia/Seoul로 간주)
+  checkinCode?: string; // 현장 출퇴근 QR 코드 (regenerate_site_checkin_code RPC 가 발급·저장)
 }
 
 export interface AnnualLeaveSettings {

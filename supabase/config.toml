@@ -1,0 +1,11 @@
+# Supabase CLI 설정 — 지금은 Edge Function 배포 옵션만 둔다.
+#
+# 두 함수 모두 Supabase 로그인 JWT 가 아니라 자체 Bearer 토큰(SHA-256 비교)으로 인증하므로
+# 게이트웨이의 JWT 검사를 꺼야 한다. 이 설정이 없으면 호출이 함수에 닿기 전에 401 로 막힌다.
+# (CLI 로 배포할 때 이 파일을 읽는다. 대시보드에서 배포한 함수는 대시보드의 "Verify JWT" 설정을 따로 확인할 것.)
+
+[functions.mcp]
+verify_jwt = false
+
+[functions.health]
+verify_jwt = false

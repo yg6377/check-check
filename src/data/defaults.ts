@@ -1,5 +1,53 @@
-import { AllSettings, Worker, Holiday } from "../types";
+import { AllSettings, Worker, Holiday, ManDayRow } from "../types";
 import { DEFAULT_DEPARTMENT_OPTIONS, DEFAULT_JOB_OPTIONS, DEFAULT_RANK_OPTIONS } from "../constants/workerOptions";
+
+export const DEFAULT_NIGHT_SHIFT_START_TIME = "15:00";
+
+/**
+ * 일용/사업소득 "급여정산 테이블" 기본값 — 엑셀 노무대장의 표를 그대로 옮긴 것.
+ * - countable: false 행은 안내용(반일 두 개의 합계 표시, 점심·식사시간)이라 합산하지 않는다.
+ * - toTime "00:00"은 밤 12시(자정, 엑셀의 24:00)를 뜻한다.
+ * - 행 라벨(조출/오전/잔업 등)은 화면 표시용으로 붙인 이름이며 계산에는 쓰이지 않는다.
+ */
+export const DEFAULT_MAN_DAY_TABLE: ManDayRow[] = [
+  // ── 주간조 · 평일 ──
+  { id: "md-d-wd-1", shift: "day", dayType: "weekday", fromTime: "05:00", toTime: "08:00", manDays: 0.5, countable: true, label: "조출" },
+  { id: "md-d-wd-2", shift: "day", dayType: "weekday", fromTime: "08:00", toTime: "12:00", manDays: 0.5, countable: true, label: "오전" },
+  { id: "md-d-wd-3", shift: "day", dayType: "weekday", fromTime: "12:00", toTime: "13:00", manDays: 0, countable: false, label: "점심시간" },
+  { id: "md-d-wd-4", shift: "day", dayType: "weekday", fromTime: "13:00", toTime: "17:00", manDays: 0.5, countable: true, label: "오후" },
+  { id: "md-d-wd-5", shift: "day", dayType: "weekday", fromTime: "08:00", toTime: "17:00", manDays: 1, countable: false, label: "하루 합계(안내용)" },
+  { id: "md-d-wd-6", shift: "day", dayType: "weekday", fromTime: "17:00", toTime: "19:30", manDays: 0.5, countable: true, label: "잔업 1" },
+  { id: "md-d-wd-7", shift: "day", dayType: "weekday", fromTime: "19:30", toTime: "22:00", manDays: 0.5, countable: true, label: "잔업 2" },
+  { id: "md-d-wd-8", shift: "day", dayType: "weekday", fromTime: "22:00", toTime: "00:00", manDays: 0.5, countable: true, label: "잔업 3" },
+  { id: "md-d-wd-9", shift: "day", dayType: "weekday", fromTime: "13:00", toTime: "15:00", manDays: 0.25, countable: true, label: "오후 조기퇴근", outBefore: "17:00" },
+  // ── 주간조 · 토요일 ──
+  { id: "md-d-sat-1", shift: "day", dayType: "saturday", fromTime: "05:00", toTime: "08:00", manDays: 0.5, countable: true, label: "조출" },
+  { id: "md-d-sat-2", shift: "day", dayType: "saturday", fromTime: "08:00", toTime: "16:00", manDays: 1, countable: false, label: "하루 합계(안내용)" },
+  { id: "md-d-sat-3", shift: "day", dayType: "saturday", fromTime: "08:00", toTime: "12:00", manDays: 0.5, countable: true, label: "오전" },
+  { id: "md-d-sat-4", shift: "day", dayType: "saturday", fromTime: "12:00", toTime: "13:00", manDays: 0, countable: false, label: "점심시간" },
+  { id: "md-d-sat-5", shift: "day", dayType: "saturday", fromTime: "13:00", toTime: "16:00", manDays: 0.5, countable: true, label: "오후" },
+  { id: "md-d-sat-6", shift: "day", dayType: "saturday", fromTime: "16:00", toTime: "18:00", manDays: 0.5, countable: true, label: "잔업" },
+  // ── 주간조 · 일요일(평일 공휴일 포함) ──
+  { id: "md-d-sun-1", shift: "day", dayType: "sunday", fromTime: "05:00", toTime: "08:00", manDays: 0.5, countable: true, label: "조출" },
+  { id: "md-d-sun-2", shift: "day", dayType: "sunday", fromTime: "08:00", toTime: "12:00", manDays: 0.5, countable: true, label: "오전" },
+  { id: "md-d-sun-3", shift: "day", dayType: "sunday", fromTime: "08:00", toTime: "15:30", manDays: 1, countable: false, label: "하루 합계(안내용)" },
+  { id: "md-d-sun-4", shift: "day", dayType: "sunday", fromTime: "12:00", toTime: "13:00", manDays: 0, countable: false, label: "점심시간" },
+  { id: "md-d-sun-5", shift: "day", dayType: "sunday", fromTime: "13:00", toTime: "15:30", manDays: 0.5, countable: true, label: "오후" },
+  { id: "md-d-sun-6", shift: "day", dayType: "sunday", fromTime: "15:30", toTime: "17:30", manDays: 0.5, countable: true, label: "잔업" },
+  // ── 야간조 · 평일 ──
+  { id: "md-n-wd-1", shift: "night", dayType: "weekday", fromTime: "19:30", toTime: "23:30", manDays: 0.75, countable: true, label: "전반" },
+  { id: "md-n-wd-2", shift: "night", dayType: "weekday", fromTime: "23:30", toTime: "00:30", manDays: 0, countable: false, label: "식사시간" },
+  { id: "md-n-wd-3", shift: "night", dayType: "weekday", fromTime: "00:30", toTime: "04:30", manDays: 0.75, countable: true, label: "후반" },
+  { id: "md-n-wd-4", shift: "night", dayType: "weekday", fromTime: "04:30", toTime: "05:30", manDays: 0.5, countable: true, label: "새벽 잔업" },
+  // ── 야간조 · 토요일 ──
+  { id: "md-n-sat-1", shift: "night", dayType: "saturday", fromTime: "16:00", toTime: "20:00", manDays: 1, countable: true, label: "전반" },
+  { id: "md-n-sat-2", shift: "night", dayType: "saturday", fromTime: "20:00", toTime: "21:00", manDays: 0, countable: false, label: "식사시간" },
+  { id: "md-n-sat-3", shift: "night", dayType: "saturday", fromTime: "21:00", toTime: "01:00", manDays: 1, countable: true, label: "후반" },
+  // ── 야간조 · 일요일(평일 공휴일 포함) ──
+  { id: "md-n-sun-1", shift: "night", dayType: "sunday", fromTime: "15:30", toTime: "19:30", manDays: 1, countable: true, label: "전반" },
+  { id: "md-n-sun-2", shift: "night", dayType: "sunday", fromTime: "19:30", toTime: "20:30", manDays: 0, countable: false, label: "식사시간" },
+  { id: "md-n-sun-3", shift: "night", dayType: "sunday", fromTime: "20:30", toTime: "00:00", manDays: 1, countable: true, label: "후반" },
+];
 
 export const DEFAULT_SETTINGS: AllSettings = {
   workTime: {
@@ -30,6 +78,8 @@ export const DEFAULT_SETTINGS: AllSettings = {
       { id: "snap-wd-out-1", dayType: "weekday", kind: "out", fromTime: "16:30", toTime: "17:50", snapTo: "17:00" },
       { id: "snap-wd-out-2", dayType: "weekday", kind: "out", fromTime: "19:00", toTime: "20:00", snapTo: "19:30" },
       { id: "snap-wd-out-3", dayType: "weekday", kind: "out", fromTime: "21:00", toTime: "22:30", snapTo: "22:00" },
+      // 자정 전후 퇴근 → 밤 12시(24:00)로 인정. 정산 테이블의 22:00~24:00 행을 채우기 위함
+      { id: "snap-wd-out-4", dayType: "weekday", kind: "out", fromTime: "23:30", toTime: "00:30", snapTo: "00:00" },
       // ── 토요일 (정규 08:00~16:00, 앞뒤 1시간 버퍼) ──
       { id: "snap-sat-in-0", dayType: "saturday", kind: "in", fromTime: "04:00", toTime: "05:30", snapTo: "05:00" },
       { id: "snap-sat-in-1", dayType: "saturday", kind: "in", fromTime: "07:00", toTime: "08:59", snapTo: "08:00" },
@@ -48,6 +98,8 @@ export const DEFAULT_SETTINGS: AllSettings = {
     ],
   },
   dailyWorkerRules: {
+    manDayTable: DEFAULT_MAN_DAY_TABLE,
+    nightShiftStartTime: DEFAULT_NIGHT_SHIFT_START_TIME,
     earlyMorningStart: "05:00",
     earlyMorningEnd: "08:00",
     earlyMorningWorkDays: 0.5,
