@@ -9,3 +9,4 @@ coverage/
 CLAUDE.md
 .claude/
 .vercel/
+supabase/.temp/
