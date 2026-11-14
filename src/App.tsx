@@ -318,18 +318,6 @@ const AdminPortal: React.FC = () => {
             </button>
 
             <button
-              onClick={() => setActiveTab("rules")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
-                activeTab === "rules"
-                  ? "bg-blue-600 text-white shadow-sm font-bold"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
-              }`}
-            >
-              <SettingsIcon className="w-3.5 h-3.5" />
-              글로벌 가산 운영 규칙
-            </button>
-
-            <button
               onClick={() => setActiveTab("simulator")}
               className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "simulator"
@@ -339,6 +327,18 @@ const AdminPortal: React.FC = () => {
             >
               <Calculator className="w-3.5 h-3.5" />
               급여/공수 모의 계산기
+            </button>
+
+            <button
+              onClick={() => setActiveTab("rules")}
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+                activeTab === "rules"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
+              }`}
+            >
+              <SettingsIcon className="w-3.5 h-3.5" />
+              운영 규칙 설정
             </button>
           </div>
         </div>
