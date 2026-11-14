@@ -824,7 +824,7 @@ export const AttendanceTab: React.FC = () => {
               onClick={() => handlePresetClick(key)}
               className={`px-3 py-1.5 text-xs font-semibold rounded border ${
                 preset === key
-                  ? "bg-slate-900 text-white border-slate-900"
+                  ? "bg-blue-600 text-white border-blue-600"
                   : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
               }`}
             >

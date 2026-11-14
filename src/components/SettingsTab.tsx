@@ -409,7 +409,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("site")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "site" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "site" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Building className="w-3.5 h-3.5 text-blue-500" /> 탭 1: 회사/현장 정보</span>
@@ -419,7 +419,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("workTime")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "workTime" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "workTime" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-blue-500" /> 탭 2: 근무 시간 규칙</span>
@@ -429,7 +429,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("overtime")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "overtime" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "overtime" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Coins className="w-3.5 h-3.5 text-blue-500" /> 탭 3: 수당 가산율</span>
@@ -439,7 +439,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("manDayTable")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "manDayTable" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "manDayTable" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-blue-500" /> 일용/사업소득 정산 테이블</span>
@@ -449,7 +449,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("ordinaryWage")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "ordinaryWage" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "ordinaryWage" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Coins className="w-3.5 h-3.5 text-blue-500" /> 탭 4: 통상임금 기준</span>
@@ -459,7 +459,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("insuranceTax")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "insuranceTax" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "insuranceTax" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-blue-500" /> 탭 5: 4대보험 & 세율</span>
@@ -469,7 +469,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("allowance")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "allowance" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "allowance" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><HeartHandshake className="w-3.5 h-3.5 text-blue-500" /> 탭 6: 수당 기본값</span>
@@ -479,7 +479,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("calendar")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "calendar" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "calendar" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Calendar className="w-3.5 h-3.5 text-blue-500" /> 탭 7: 공휴일 관리</span>
@@ -489,7 +489,7 @@ export const SettingsTab: React.FC = () => {
         <button
           onClick={() => setActiveSubTab("annualLeave")}
           className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
-            activeSubTab === "annualLeave" ? "bg-slate-900 text-white border-l-4 border-blue-600 shadow-sm font-bold" : "text-slate-650 hover:bg-slate-50"
+            activeSubTab === "annualLeave" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
           }`}
         >
           <span className="flex items-center gap-2"><Layers className="w-3.5 h-3.5 text-blue-500" /> 탭 8: 연차 설정</span>
