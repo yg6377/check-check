@@ -562,7 +562,7 @@ export const AttendanceTab: React.FC = () => {
                 type="button"
                 onClick={() => void saveConfirmedBreakdown(r)}
                 disabled={confirmSavingId === r.id}
-                className="px-3 py-1.5 text-xs font-bold rounded bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1.5"
               >
                 {confirmSavingId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 정산값 확정 저장
@@ -1501,7 +1501,7 @@ export const AttendanceTab: React.FC = () => {
                 <button
                   type="submit"
                   disabled={manualSaving}
-                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                 >
                   {manualSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                   저장

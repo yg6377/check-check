@@ -729,7 +729,7 @@ export const WorkerPortal: React.FC = () => {
                 <button
                   onClick={loadAttendanceHistory}
                   disabled={recordsLoading}
-                  className="w-full rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="w-full rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
                 >
                   {t("search")}
                 </button>

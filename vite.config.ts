@@ -21,16 +21,16 @@ export default defineConfig(() => {
         registerType: 'prompt',
         includeAssets: ['icons/workflow-icon.png'],
         manifest: {
-          name: '출퇴근 앱',
-          short_name: '출퇴근',
-          description: '현장 근로자 출퇴근 확인 앱',
+          name: 'Check Check',
+          short_name: 'Check Check',
+          description: '현장 출퇴근 · 노무 · 급여 관리',
           lang: 'ko-KR',
           start_url: '/',
           scope: '/',
           display: 'standalone',
           orientation: 'portrait',
-          background_color: '#f8fafc',
-          theme_color: '#0f172a',
+          background_color: '#f5f7fb',
+          theme_color: '#ffffff',
           icons: [
             {
               src: '/icons/icon-192.png',

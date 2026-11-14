@@ -20,7 +20,6 @@ import {
   Clock,
   ShieldCheck,
   Unlock,
-  Construction,
   HardHat,
   ArrowLeft,
   AlertCircle,
@@ -59,11 +58,9 @@ const LoginGate: React.FC = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-stone-100 flex items-center justify-center p-4 font-sans select-none">
         <div className="bg-white rounded-3xl border border-gray-200/80 p-8 sm:p-10 max-w-md w-full shadow-2xl space-y-8 text-center relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-2.5 bg-gray-900"></div>
+          <div className="absolute top-0 inset-x-0 h-2.5 bg-blue-600"></div>
 
-          <div className="mx-auto bg-stone-50 w-16 h-16 rounded-2xl flex items-center justify-center border border-gray-200 shadow-sm">
-            <Construction className="w-8 h-8 text-gray-800" />
-          </div>
+          <img src="/icons/icon-192.png" alt="" className="mx-auto w-16 h-16 rounded-2xl shadow-sm" />
 
           <div className="space-y-2">
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">{t("systemTitle")}</h1>
@@ -75,16 +72,16 @@ const LoginGate: React.FC = () => {
           <div className="grid grid-cols-1 gap-3">
             <button
               onClick={() => setSelectedRole("admin")}
-              className="group flex items-center gap-4 p-4 bg-slate-900 text-white rounded-xl border border-slate-800 hover:bg-slate-800 transition shadow-lg hover:shadow-xl active:scale-[0.99]"
+              className="group flex items-center gap-4 p-4 bg-blue-600 text-white rounded-xl border border-blue-600 hover:bg-blue-700 transition shadow-lg hover:shadow-xl active:scale-[0.99]"
             >
-              <div className="bg-blue-600 p-2.5 rounded-lg border border-blue-500">
+              <div className="bg-white/15 p-2.5 rounded-lg border border-white/25">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="text-left flex-1">
                 <p className="text-sm font-bold">{t("adminLogin")}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{t("adminLoginDesc")}</p>
+                <p className="text-[11px] text-blue-100 mt-0.5">{t("adminLoginDesc")}</p>
               </div>
-              <Unlock className="w-4 h-4 text-slate-400 group-hover:text-white transition" />
+              <Unlock className="w-4 h-4 text-blue-200 group-hover:text-white transition" />
             </button>
 
             <button
@@ -128,7 +125,7 @@ const LoginGate: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-stone-100 flex items-center justify-center p-4 font-sans">
       <div className="bg-white rounded-3xl border border-gray-200/80 p-8 sm:p-10 max-w-md w-full shadow-2xl space-y-6 relative overflow-hidden">
-        <div className={`absolute top-0 inset-x-0 h-2.5 ${isAdmin ? "bg-slate-900" : "bg-orange-500"}`}></div>
+        <div className={`absolute top-0 inset-x-0 h-2.5 ${isAdmin ? "bg-blue-600" : "bg-orange-500"}`}></div>
 
         <button
           onClick={() => {
@@ -145,8 +142,8 @@ const LoginGate: React.FC = () => {
         </button>
 
         <div className="text-center space-y-2">
-          <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center border ${isAdmin ? "bg-slate-50 border-slate-200" : "bg-orange-50 border-orange-200"}`}>
-            {isAdmin ? <ShieldCheck className="w-7 h-7 text-slate-800" /> : <HardHat className="w-7 h-7 text-orange-600" />}
+          <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center border ${isAdmin ? "bg-blue-50 border-blue-100" : "bg-orange-50 border-orange-200"}`}>
+            {isAdmin ? <ShieldCheck className="w-7 h-7 text-blue-600" /> : <HardHat className="w-7 h-7 text-orange-600" />}
           </div>
           <h2 className="text-xl font-black text-gray-900">
             {isAdmin ? t("adminLoginTitle") : t("workerLoginTitle")}
@@ -207,7 +204,7 @@ const LoginGate: React.FC = () => {
             disabled={submitting}
             className={`w-full flex items-center justify-center gap-2 font-bold text-sm py-3 px-4 rounded-xl border transition shadow-lg hover:shadow-xl active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed ${
               isAdmin
-                ? "bg-slate-900 text-white border-transparent hover:bg-slate-800"
+                ? "bg-blue-600 text-white border-transparent hover:bg-blue-700"
                 : "bg-orange-500 text-white border-transparent hover:bg-orange-600"
             }`}
           >
@@ -230,35 +227,33 @@ const AdminPortal: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-50 text-slate-900 font-sans flex flex-col justify-between">
-      <header className="bg-slate-900 border-b border-slate-950 text-white shadow-md">
+      <header className="bg-white border-b border-slate-200 text-slate-900 shadow-xs">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg border border-blue-500 shrink-0">
-              <Construction className="w-5 h-5 text-white" />
-            </div>
+            <img src="/icons/icon-192.png" alt="" className="w-[38px] h-[38px] rounded-xl shrink-0" />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+                <span className="text-xs font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200">
                   {settings?.site?.companyName || "공유 시공단"}
                 </span>
-                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-800 flex items-center gap-1">
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5" /> SUPABASE RLS
                 </span>
-                <span className="text-[10px] font-mono font-semibold text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                <span className="text-[10px] font-mono font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                   v{__APP_VERSION__}
                 </span>
               </div>
-              <h2 className="text-sm font-extrabold tracking-tight text-white mt-0.5">
-                현장 노무 & 급여 정책 관리 시스템 (Workforce Core v{__APP_VERSION__})
+              <h2 className="text-sm font-extrabold tracking-tight text-slate-900 mt-0.5">
+                <span className="text-blue-600">Check Check</span> · 현장 노무 & 급여 관리
               </h2>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 md:justify-end">
             {settings?.site?.siteLocation && (
-              <div className="hidden sm:block bg-slate-850 p-2 px-3 rounded-lg border border-slate-700 text-[10px] font-mono text-slate-300 space-y-0.5 shadow-inner">
+              <div className="hidden sm:block bg-slate-50 p-2 px-3 rounded-lg border border-slate-200 text-[10px] font-mono text-slate-600 space-y-0.5">
                 <p className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3 text-blue-400" />
+                  <MapPin className="w-3 h-3 text-blue-500" />
                   <strong>현장 기준점:</strong>{" "}
                   {isSiteLocationUnset(settings.site)
                     ? "미설정"
@@ -270,11 +265,11 @@ const AdminPortal: React.FC = () => {
               </div>
             )}
 
-            <div className="bg-slate-850 p-2 px-3.5 rounded-lg border border-slate-700 text-[10px] text-right space-y-0.5 flex flex-col items-center md:items-end">
-              <p className="font-bold text-slate-205 font-mono text-center md:text-right">{user?.email}</p>
+            <div className="bg-slate-50 p-2 px-3.5 rounded-lg border border-slate-200 text-[10px] text-right space-y-0.5 flex flex-col items-center md:items-end">
+              <p className="font-bold text-slate-700 font-mono text-center md:text-right">{user?.email}</p>
               <button
                 onClick={logout}
-                className="w-full md:w-auto text-[10px] text-rose-400 font-extrabold hover:underline flex items-center justify-center gap-1 cursor-pointer bg-transparent border-0"
+                className="w-full md:w-auto text-[10px] text-rose-600 font-extrabold hover:underline flex items-center justify-center gap-1 cursor-pointer bg-transparent border-0"
               >
                 <LogOut className="w-3 h-3" /> 로그아웃
               </button>
@@ -283,15 +278,15 @@ const AdminPortal: React.FC = () => {
         </div>
       </header>
 
-      <div className="bg-slate-100 border-b border-slate-200 py-1.5 select-none shadow-xs">
+      <div className="bg-white border-b border-slate-200 py-2 select-none">
         <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex bg-slate-200 p-0.5 w-full sm:w-fit rounded-lg border border-slate-300 gap-1 overflow-x-auto">
+          <div className="flex bg-slate-100 p-1 w-full sm:w-fit rounded-xl border border-slate-200 gap-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab("workers")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "workers"
-                  ? "bg-white text-blue-700 shadow border-b-2 border-blue-600 font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -300,10 +295,10 @@ const AdminPortal: React.FC = () => {
 
             <button
               onClick={() => setActiveTab("attendance")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "attendance"
-                  ? "bg-white text-blue-700 shadow border-b-2 border-blue-600 font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
               <CalendarRange className="w-3.5 h-3.5" />
@@ -312,10 +307,10 @@ const AdminPortal: React.FC = () => {
 
             <button
               onClick={() => setActiveTab("expiry")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "expiry"
-                  ? "bg-white text-blue-700 shadow border-b-2 border-blue-600 font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
               <BellRing className="w-3.5 h-3.5" />
@@ -324,10 +319,10 @@ const AdminPortal: React.FC = () => {
 
             <button
               onClick={() => setActiveTab("rules")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "rules"
-                  ? "bg-white text-blue-700 shadow border-b-2 border-blue-600 font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
               <SettingsIcon className="w-3.5 h-3.5" />
@@ -336,10 +331,10 @@ const AdminPortal: React.FC = () => {
 
             <button
               onClick={() => setActiveTab("simulator")}
-              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
+              className={`shrink-0 flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer whitespace-nowrap ${
                 activeTab === "simulator"
-                  ? "bg-white text-blue-700 shadow border-b-2 border-blue-600 font-black"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  ? "bg-blue-600 text-white shadow-sm font-bold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
               <Calculator className="w-3.5 h-3.5" />
@@ -360,7 +355,7 @@ const AdminPortal: React.FC = () => {
       <footer className="border-t border-slate-200 bg-white py-4 shadow-xs">
         <div className="max-w-screen-2xl mx-auto px-4 text-center space-y-1">
           <p className="text-[10px] text-slate-400 font-mono">
-            &copy; {new Date().getFullYear()} CM건설 Workforce & Payroll Registry Portal.
+            &copy; {new Date().getFullYear()} Check Check
           </p>
           <p className="text-[9px] text-slate-400 italic max-w-lg mx-auto">
             * 본 서비스는 하드코딩 요율을 지양하고 모든 근로세, 4대보험, 할증가중치를 Supabase Postgres에서 실시간 제어하는 설정 지향형 아키텍처 법령 준주 버전입니다.

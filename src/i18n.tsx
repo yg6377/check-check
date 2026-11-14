@@ -26,7 +26,7 @@ export const languageToLocale: Record<AppLanguage, string> = {
 
 const messages = {
   ko: {
-    systemTitle: "출퇴근 시스템",
+    systemTitle: "Check Check",
     chooseLoginMethod: "로그인 방식을 선택해주세요.",
     adminLogin: "관리자 로그인",
     adminLoginDesc: "근로자·임금정책·휴일 관리",
@@ -109,7 +109,7 @@ const messages = {
     minuteUnit: "분",
   },
   vi: {
-    systemTitle: "Hệ thống chấm công",
+    systemTitle: "Check Check",
     chooseLoginMethod: "Vui lòng chọn phương thức đăng nhập.",
     adminLogin: "Đăng nhập quản trị",
     adminLoginDesc: "Quản lý lao động, lương và ngày nghỉ",
@@ -192,7 +192,7 @@ const messages = {
     minuteUnit: "phút",
   },
   km: {
-    systemTitle: "ប្រព័ន្ធចូលចេញការងារ",
+    systemTitle: "Check Check",
     chooseLoginMethod: "សូមជ្រើសរើសវិធីចូលប្រើប្រាស់។",
     adminLogin: "ចូលអ្នកគ្រប់គ្រង",
     adminLoginDesc: "គ្រប់គ្រងកម្មករ ប្រាក់ឈ្នួល និងថ្ងៃឈប់",
@@ -275,7 +275,7 @@ const messages = {
     minuteUnit: "នាទី",
   },
   my: {
-    systemTitle: "အလုပ်တက်/ဆင်း စနစ်",
+    systemTitle: "Check Check",
     chooseLoginMethod: "လော့ဂ်အင်နည်းလမ်းကို ရွေးချယ်ပါ။",
     adminLogin: "အက်ဒ်မင် လော့ဂ်အင်",
     adminLoginDesc: "အလုပ်သမား၊ လစာနှင့် ပိတ်ရက်များ စီမံခန့်ခွဲမှု",
@@ -358,7 +358,7 @@ const messages = {
     minuteUnit: "မိနစ်",
   },
   ne: {
-    systemTitle: "हाजिरी प्रणाली",
+    systemTitle: "Check Check",
     chooseLoginMethod: "कृपया लगइन गर्ने तरिका छान्नुहोस्।",
     adminLogin: "प्रशासक लगइन",
     adminLoginDesc: "कामदार, तलब र बिदा व्यवस्थापन",
@@ -441,7 +441,7 @@ const messages = {
     minuteUnit: "मिनेट",
   },
   zh: {
-    systemTitle: "考勤系统",
+    systemTitle: "Check Check",
     chooseLoginMethod: "请选择登录方式。",
     adminLogin: "管理员登录",
     adminLoginDesc: "管理员工、薪资和假期",
@@ -524,7 +524,7 @@ const messages = {
     minuteUnit: "分钟",
   },
   en: {
-    systemTitle: "Attendance System",
+    systemTitle: "Check Check",
     chooseLoginMethod: "Please select a login method.",
     adminLogin: "Admin Login",
     adminLoginDesc: "Manage workers, wages, and holidays",

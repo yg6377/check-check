@@ -209,7 +209,7 @@ export const SiteLocationEditor: React.FC<{
           type="button"
           onClick={save}
           disabled={!dirty || !valid || saving}
-          className="flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-40"
         >
           <Save className="w-3.5 h-3.5" />
           {saving ? "저장 중…" : "기준점·반경 저장"}

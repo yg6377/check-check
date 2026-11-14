@@ -7,7 +7,7 @@
 
 ## 1. 프로젝트 개요
 
-**이름:** 건설 현장 출퇴근 · 노무 · 급여 관리 앱
+**이름:** Check Check — 건설 현장 출퇴근 · 노무 · 급여 관리 앱 (저장소·Vercel·Supabase 프로젝트 이름은 예전 그대로)
 **도메인:** 건설 현장 노무 관리 — 근로자 등록, QR 출퇴근 타각, 근태 정산, 임금 정책(연장/야간/휴일 가산, 4대보험, 세금) 설정, 급여 시뮬레이션, 노무대장·급여명세서 엑셀 발행
 **현재 버전:** `package.json`의 `version` (빌드 시 `__APP_VERSION__` 전역 상수로 주입되어 화면 우상단에 표시)
 
@@ -251,19 +251,20 @@ AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 �
 - `src/data/defaults.ts`의 **`MOCK_WORKERS`·`DEFAULT_HOLIDAYS`는 어디서도 import되지 않는 죽은 코드**입니다. 시드는 `supabase/seed.sql`이 담당합니다. (`MOCK_WORKERS`에는 주민번호·계좌번호 형식의 더미 데이터가 들어 있습니다.)
 - **미사용 의존성 4종:** `@google/genai`, `express`, `dotenv`, `autoprefixer` — 소스 참조 0건. `package.json`의 `clean` 스크립트도 존재하지 않는 `server.js`를 지웁니다.
 - `SupabaseContext.tsx` 말미의 `useFirebase` / `FirebaseProvider` 별칭 — Firebase 시절 하위호환용
-- `package.json`의 `name`이 `react-example` (AI Studio 템플릿 잔재)
 
 ### 하드코딩된 값
 
 - 회사명 `"씨엠(CM)건설"`, 현장 주소 `"충남 당진시 신평면 신평로 45"` — `defaults.ts` 및 `seed.sql`
 - 인증 도메인 `admin.cm.local` / `worker.cm.local` — `auth.ts` + `handle_new_auth_user()` 트리거 **양쪽에 박혀 있음.** 바꾸려면 둘 다 고쳐야 합니다.
 - `ExpiryTab.tsx`: 만료 알림 임계값 `ALERT_WINDOW_DAYS = 60`, 개인정보 보존 `PRIVACY_RETENTION_YEARS = 2`
-- `App.tsx` 푸터의 "CM건설 Workforce & Payroll Registry Portal"
 - `WorkerTab.tsx`: 신규 등록 기본값 (월급 3,000,000 / 시급 12,000 / 일급 180,000 / 사번 포맷 `CM-{year}-{nnn}`)
 
 ---
 
 ## 7. 작업 시 주의사항
+
+- **겉모습은 `src/index.css`의 `@theme` 토큰으로 바꿉니다.** 색(slate·gray·stone을 같은 중립색으로 통일, blue가 포인트 색)·모서리·그림자·글꼴(Pretendard)이 여기서 정해집니다. 관리자가 고령이라 **화면 배치(탭 순서, 버튼 위치, 표의 열, 문구)는 바꾸지 않는다**는 것이 사용자 요청입니다. 디자인을 손볼 때 컴포넌트의 레이아웃 클래스를 건드리지 마세요.
+- 앱 아이콘(`public/icons/`)은 가방+시계 그림 한 장을 크기만 달리한 것입니다(512는 maskable 겸용).
 
 - **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `013_`입니다.
 - **RPC 함수를 고칠 때는 최신 정의를 찾아 전체를 재작성.** `create_or replace`가 누적되어 있어 부분 수정이 불가능합니다.

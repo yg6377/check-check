@@ -387,7 +387,7 @@ export const WorkerTab: React.FC = () => {
 
         <button
           onClick={prepareOpenAdd}
-          className="flex items-center justify-center gap-1.5 bg-slate-900 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-slate-800 transition shadow-xs cursor-pointer"
+          className="flex items-center justify-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-semibold hover:bg-blue-700 transition shadow-xs cursor-pointer"
         >
           <UserPlus className="w-3.5 h-3.5" />
           신규 근로자 등록
@@ -1052,7 +1052,7 @@ export const WorkerTab: React.FC = () => {
                     <button
                       type="button"
                       onClick={addCustomDeduction}
-                      className="bg-gray-800 text-white text-xs px-4 py-1.5 rounded-lg font-medium hover:bg-gray-700"
+                      className="bg-blue-600 text-white text-xs px-4 py-1.5 rounded-lg font-medium hover:bg-blue-700"
                     >
                       추가
                     </button>
@@ -1195,7 +1195,7 @@ export const WorkerTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  className="px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 shadow"
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow"
                 >
                   {editingWorker ? "임금계약 수정 완료" : "근로자 정식 임용 등록"}
                 </button>
@@ -1299,7 +1299,7 @@ const CredentialsModal: React.FC<{
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800"
+            className="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700"
           >
             확인 (창 닫기)
           </button>
