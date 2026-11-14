@@ -18,6 +18,18 @@ export const TIME_ZONE_OPTIONS: { value: string; label: string }[] = [
   { value: "UTC", label: "협정 세계시 (UTC)" },
 ];
 
+const WEEKDAY_LABELS_KO = ["일", "월", "화", "수", "목", "금", "토"];
+
+/**
+ * "YYYY-MM-DD" 근무일자의 요일을 한 글자(일~토)로 돌려준다.
+ * 날짜만 있는 문자열은 타임존과 무관한 "달력상의 날짜"이므로 로컬 자정으로 해석해도 요일이 바뀌지 않는다.
+ */
+export function getWeekdayLabel(ymd: string): string {
+  const date = new Date(`${ymd}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "";
+  return WEEKDAY_LABELS_KO[date.getDay()];
+}
+
 /** 설정에서 적용할 타임존을 읽는다. 미설정 시 Asia/Seoul. */
 export function getAppTimeZone(settings?: AllSettings | null): string {
   const tz = settings?.site?.timezone;

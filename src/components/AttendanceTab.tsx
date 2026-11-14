@@ -34,6 +34,7 @@ import { calculateDailyBreakdown, getDayType, isHolidayDate } from "../utils/att
 import {
   formatZonedTime,
   getAppTimeZone,
+  getWeekdayLabel,
   getZonedClockMinutes,
   getZonedYmd,
   zonedWallTimeToUtcIso,
@@ -130,6 +131,7 @@ export const AttendanceTab: React.FC = () => {
   const [excludeRetired, setExcludeRetired] = useState(true);
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [onlyMissing, setOnlyMissing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const querySeq = useRef(0);
@@ -255,6 +257,11 @@ export const AttendanceTab: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fromDate, toDate, workerId, excludeRetired, workers.length]);
 
+  // 조회 조건을 바꾸면 "퇴근 미체크만 보기"는 해제한다.
+  useEffect(() => {
+    setOnlyMissing(false);
+  }, [fromDate, toDate, workerId, excludeRetired]);
+
   // 집계
   const summary = useMemo(() => {
     const totalDays = records.filter((r) => r.checkInAt).length;
@@ -268,6 +275,23 @@ export const AttendanceTab: React.FC = () => {
 
   const isMissingCheckout = (r: AttendanceRecord) =>
     r.checkInAt && !r.checkOutAt && r.workDate < todayYmd;
+
+  // "퇴근 미체크" 카드를 누르면 해당 기록만 보여준다. 요약 카드 숫자는 항상 전체(records) 기준.
+  const visibleRecords = useMemo(
+    () => (onlyMissing ? records.filter((r) => isMissingCheckout(r)) : records),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [records, onlyMissing, todayYmd]
+  );
+
+  // 미체크 건을 모두 처리해 0건이 되면 빈 화면에 갇히지 않도록 필터를 자동 해제한다.
+  useEffect(() => {
+    if (onlyMissing && !loading && summary.missingCheckout === 0) setOnlyMissing(false);
+  }, [onlyMissing, loading, summary.missingCheckout]);
+
+  const formatWorkDate = (workDate: string) => {
+    const weekday = getWeekdayLabel(workDate);
+    return weekday ? `${workDate} (${weekday})` : workDate;
+  };
 
   // 공휴일·주말이면 날짜를 빨간색으로 강조한다.
   const isRestDay = (workDate: string) => getDayType(workDate, holidays) !== "weekday";
@@ -329,7 +353,7 @@ export const AttendanceTab: React.FC = () => {
   };
 
   const attendanceTotals = useMemo(() => {
-    return records.reduce(
+    return visibleRecords.reduce(
       (totals, r) => {
         const detail = getRecordBreakdown(r);
         const bd = detail?.breakdown;
@@ -365,7 +389,7 @@ export const AttendanceTab: React.FC = () => {
         manDays: 0,
       }
     );
-  }, [records, workerById, holidays, settings]);
+  }, [visibleRecords, workerById, holidays, settings]);
 
   const updateConfirmDraft = (recordId: string, key: keyof AttendanceBreakdownValues, value: string) => {
     const parsed = Math.max(0, Number(value) || 0);
@@ -695,7 +719,7 @@ export const AttendanceTab: React.FC = () => {
 
   // 현재 화면(조회 조건 + 정렬)에 보이는 목록을 그대로 엑셀로 저장
   const exportCurrentView = async () => {
-    if (records.length === 0) {
+    if (visibleRecords.length === 0) {
       setExportError("조회 결과가 없습니다. 먼저 조회해주세요.");
       return;
     }
@@ -703,7 +727,7 @@ export const AttendanceTab: React.FC = () => {
     setExportError("");
     try {
       const selectedWorker = workerId === "all" ? null : workers.find((w) => w.id === workerId);
-      const rows: AttendanceViewRow[] = records.map((r) => {
+      const rows: AttendanceViewRow[] = visibleRecords.map((r) => {
         const detail = getRecordBreakdown(r);
         const bd = detail?.breakdown;
         const effective = getEffectiveConfirmValues(r);
@@ -973,8 +997,29 @@ export const AttendanceTab: React.FC = () => {
           label="퇴근 미체크"
           value={`${summary.missingCheckout} 건`}
           tone={summary.missingCheckout > 0 ? "rose" : "slate"}
+          active={onlyMissing}
+          hint={onlyMissing ? "전체 보기" : summary.missingCheckout > 0 ? "눌러서 이것만 보기" : undefined}
+          onClick={
+            summary.missingCheckout > 0 || onlyMissing ? () => setOnlyMissing((prev) => !prev) : undefined
+          }
         />
       </div>
+
+      {onlyMissing && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
+          <span className="flex items-center gap-1.5 font-semibold">
+            <AlertCircle className="w-4 h-4" />
+            퇴근 미체크 {visibleRecords.length}건만 보는 중
+          </span>
+          <button
+            type="button"
+            onClick={() => setOnlyMissing(false)}
+            className="rounded border border-rose-300 bg-white px-2.5 py-1 font-bold text-rose-700 hover:bg-rose-100"
+          >
+            전체 보기
+          </button>
+        </div>
+      )}
 
       {/* 에러 */}
       {error && (
@@ -990,12 +1035,12 @@ export const AttendanceTab: React.FC = () => {
             <Loader2 className="w-5 h-5 animate-spin inline mr-2" />
             조회 중...
           </div>
-        ) : records.length === 0 ? (
+        ) : visibleRecords.length === 0 ? (
           <div className="bg-white rounded-lg border border-slate-200 py-10 text-center text-slate-400 text-xs">
             조회 결과가 없습니다.
           </div>
         ) : (
-          records.map((r) => {
+          visibleRecords.map((r) => {
             const detail = getRecordBreakdown(r);
             const bd = detail?.breakdown;
             const effective = getEffectiveConfirmValues(r);
@@ -1020,7 +1065,7 @@ export const AttendanceTab: React.FC = () => {
                           isRestDay(r.workDate) ? "text-rose-600" : "text-slate-800"
                         }`}
                       >
-                        {r.workDate}
+                        {formatWorkDate(r.workDate)}
                       </div>
                       <div className="mt-0.5 truncate">
                         <span className="font-mono text-[10px] text-slate-400">{r.workerCode}</span>{" "}
@@ -1115,12 +1160,12 @@ export const AttendanceTab: React.FC = () => {
             );
           })
         )}
-        {!loading && records.length > 0 && (
+        {!loading && visibleRecords.length > 0 && (
           <div className="rounded-lg border border-slate-300 bg-slate-900 px-3.5 py-3 text-white shadow-xs">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <div className="text-[10px] font-bold uppercase text-slate-300">합계</div>
-                <div className="mt-0.5 text-xs font-mono text-slate-400">{records.length} 건</div>
+                <div className="mt-0.5 text-xs font-mono text-slate-400">{visibleRecords.length} 건</div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-right">
                 <div>
@@ -1141,7 +1186,7 @@ export const AttendanceTab: React.FC = () => {
         )}
         <div className="px-1 pt-0.5 text-[10px] text-slate-500 font-mono flex items-center gap-2">
           <TrendingUp className="w-3 h-3" />
-          {fromDate} ~ {toDate} · 총 {records.length} 건
+          {fromDate} ~ {toDate} · 총 {visibleRecords.length} 건
         </div>
       </div>
 
@@ -1174,14 +1219,14 @@ export const AttendanceTab: React.FC = () => {
                     조회 중...
                   </td>
                 </tr>
-              ) : records.length === 0 ? (
+              ) : visibleRecords.length === 0 ? (
                 <tr>
                   <td colSpan={role === "admin" ? 13 : 12} className="text-center py-10 text-slate-400">
                     조회 결과가 없습니다.
                   </td>
                 </tr>
               ) : (
-                records.map((r) => {
+                visibleRecords.map((r) => {
                   const detail = getRecordBreakdown(r);
                   const bd = detail?.breakdown;
                   const effective = getEffectiveConfirmValues(r);
@@ -1196,9 +1241,9 @@ export const AttendanceTab: React.FC = () => {
                     } ${expandedId === r.id ? "bg-slate-50" : ""}`}
                   >
                     <Td
-                      className={`font-mono ${isRestDay(r.workDate) ? "font-bold text-rose-600" : ""}`}
+                      className={`font-mono whitespace-nowrap ${isRestDay(r.workDate) ? "font-bold text-rose-600" : ""}`}
                     >
-                      {r.workDate}
+                      {formatWorkDate(r.workDate)}
                     </Td>
                     <Td>
                       <div className="flex flex-col">
@@ -1309,11 +1354,11 @@ export const AttendanceTab: React.FC = () => {
                 })
               )}
             </tbody>
-            {!loading && records.length > 0 && (
+            {!loading && visibleRecords.length > 0 && (
               <tfoot className="bg-slate-900 text-white">
                 <tr>
                   <td colSpan={4} className="border-l border-slate-700 first:border-l-0 px-3 py-2.5 font-bold">
-                    합계 <span className="ml-2 font-mono text-[10px] text-slate-400">{records.length} 건</span>
+                    합계 <span className="ml-2 font-mono text-[10px] text-slate-400">{visibleRecords.length} 건</span>
                   </td>
                   <td className="border-l border-slate-700 px-3 py-2.5 text-center font-mono font-bold tabular-nums">
                     {fmtShortHours(attendanceTotals.workHours)}
@@ -1341,7 +1386,7 @@ export const AttendanceTab: React.FC = () => {
         </div>
         <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-[10px] text-slate-500 font-mono flex items-center gap-2">
           <TrendingUp className="w-3 h-3" />
-          {fromDate} ~ {toDate} · 총 {records.length} 건
+          {fromDate} ~ {toDate} · 총 {visibleRecords.length} 건
         </div>
       </div>
 
@@ -1626,7 +1671,11 @@ const SummaryCard: React.FC<{
   label: string;
   value: string;
   tone: "slate" | "emerald" | "blue" | "rose";
-}> = ({ icon, label, value, tone }) => {
+  /** 지정하면 카드가 버튼이 된다(목록 필터 토글용). */
+  onClick?: () => void;
+  active?: boolean;
+  hint?: string;
+}> = ({ icon, label, value, tone, onClick, active, hint }) => {
   const toneClasses = {
     slate:   "bg-white border-slate-200 text-slate-700",
     emerald: "bg-emerald-50 border-emerald-200 text-emerald-800",
@@ -1634,13 +1683,31 @@ const SummaryCard: React.FC<{
     rose:    "bg-rose-50 border-rose-200 text-rose-800",
   }[tone];
 
-  return (
-    <div className={`rounded-lg border p-3 ${toneClasses}`}>
+  const body = (
+    <>
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider opacity-80">
         {icon}
         {label}
+        {hint && <span className="ml-auto normal-case tracking-normal font-semibold opacity-80">{hint}</span>}
       </div>
       <p className="text-lg font-extrabold mt-1 font-mono">{value}</p>
-    </div>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className={`rounded-lg border p-3 ${toneClasses}`}>{body}</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={Boolean(active)}
+      className={`w-full rounded-lg border p-3 text-left cursor-pointer transition hover:brightness-95 ${toneClasses} ${
+        active ? "ring-2 ring-rose-400 border-rose-400" : ""
+      }`}
+    >
+      {body}
+    </button>
   );
 };
