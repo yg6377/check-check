@@ -88,6 +88,7 @@ export interface SiteSettings {
   allowedRadius: number; // meters, e.g., 100
   paymentDay: number; // e.g., 15
   timezone?: string; // IANA 타임존, e.g., "Asia/Seoul" (미설정 시 Asia/Seoul로 간주)
+  checkinCode?: string; // 현장 출퇴근 QR 코드 (regenerate_site_checkin_code RPC 가 발급·저장)
 }
 
 export interface AnnualLeaveSettings {
