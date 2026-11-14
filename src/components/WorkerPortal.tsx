@@ -3,7 +3,7 @@ import { AttendanceRecord, useApp } from "../context/SupabaseContext";
 import type { Html5Qrcode } from "html5-qrcode";
 import { languageOptions, languageToLocale, useLanguage } from "../i18n";
 import { formatZonedTime, getAppTimeZone, getZonedYmd } from "../utils/datetime";
-import { calculateDailyBreakdown, getDayType } from "../utils/attendanceHours";
+import { calculateDailyBreakdown, getDayType, getLateBaseTime, getLateMinutes } from "../utils/attendanceHours";
 import { AttendanceLocation, formatDistance } from "../utils/geo";
 import {
   HardHat,
@@ -363,8 +363,9 @@ const ScannerModal: React.FC<{
 const AttendanceResultModal: React.FC<{
   action: "in" | "out";
   geo: AttendanceGeoResult | null;
+  late: { minutes: number; baseTime: string } | null;
   onConfirm: () => void;
-}> = ({ action, geo, onConfirm }) => {
+}> = ({ action, geo, late, onConfirm }) => {
   const { t } = useLanguage();
   const isCheckIn = action === "in";
 
@@ -392,6 +393,19 @@ const AttendanceResultModal: React.FC<{
           <p className="mt-2 text-sm text-slate-500">
             {t("confirmReturn")}
           </p>
+
+          {/* 지각 안내 — 출근은 이미 정상 처리된 상태이고, 늦었다는 사실만 알린다. */}
+          {isCheckIn && late && late.minutes > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-left text-rose-800">
+              <Clock className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold">{t("lateTitle")}</p>
+                <p className="mt-0.5 text-xs">
+                  {t("lateDetail").replace("{time}", late.baseTime).replace("{minutes}", String(late.minutes))}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* 위치 판정 — 기록·표시용. 현장 밖이어도 타각은 이미 정상 처리된 상태다. */}
           {geo?.withinGeo === false && (
@@ -449,6 +463,7 @@ export const WorkerPortal: React.FC = () => {
   const [attendanceHistory, setAttendanceHistory] = useState<AttendanceRecord[]>([]);
   const [resultAction, setResultAction] = useState<"in" | "out" | null>(null);
   const [resultGeo, setResultGeo] = useState<AttendanceGeoResult | null>(null);
+  const [resultLate, setResultLate] = useState<{ minutes: number; baseTime: string } | null>(null);
   const [historyFromDate, setHistoryFromDate] = useState(() => currentMonthStartYmd(tz));
   const [historyToDate, setHistoryToDate] = useState(() => getZonedYmd(new Date(), tz));
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
@@ -510,9 +525,11 @@ export const WorkerPortal: React.FC = () => {
       distanceM: result.distanceM,
       withinGeo: result.withinGeo,
     });
+    const lateMinutes = action === "in" ? getLateMinutes(result.timestamp ?? new Date().toISOString(), settings) : 0;
+    setResultLate(lateMinutes > 0 ? { minutes: lateMinutes, baseTime: getLateBaseTime(settings) } : null);
     setResultAction(action);
     setScannerAction(null);
-  }, [scannerAction, submitAttendance, loadAttendanceHistory]);
+  }, [scannerAction, submitAttendance, loadAttendanceHistory, settings]);
 
   const handleCloseScanner = useCallback(() => {
     setScannerAction(null);
@@ -831,9 +848,11 @@ export const WorkerPortal: React.FC = () => {
         <AttendanceResultModal
           action={resultAction}
           geo={resultGeo}
+          late={resultLate}
           onConfirm={() => {
             setResultAction(null);
             setResultGeo(null);
+            setResultLate(null);
           }}
         />
       )}

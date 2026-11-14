@@ -31,7 +31,7 @@ import {
   exportAttendanceView,
   AttendanceViewRow,
 } from "../utils/excelExporter";
-import { calculateDailyBreakdown, getDayType, isHolidayDate } from "../utils/attendanceHours";
+import { calculateDailyBreakdown, formatLateDuration, getDayType, getLateMinutes, isHolidayDate } from "../utils/attendanceHours";
 import {
   formatZonedTime,
   getAppTimeZone,
@@ -134,6 +134,7 @@ export const AttendanceTab: React.FC = () => {
 
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [onlyMissing, setOnlyMissing] = useState(false);
+  const [onlyLate, setOnlyLate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const querySeq = useRef(0);
@@ -262,6 +263,7 @@ export const AttendanceTab: React.FC = () => {
   // 조회 조건을 바꾸면 "퇴근 미체크만 보기"는 해제한다.
   useEffect(() => {
     setOnlyMissing(false);
+    setOnlyLate(false);
   }, [fromDate, toDate, workerId, excludeRetired]);
 
   // 집계
@@ -272,23 +274,38 @@ export const AttendanceTab: React.FC = () => {
       (r) => r.checkInAt && !r.checkOutAt && r.workDate < todayYmd
     ).length;
     const uniqueWorkers = new Set(records.map((r) => r.workerId)).size;
-    return { totalDays, totalHours, missingCheckout, uniqueWorkers };
-  }, [records, todayYmd]);
+    // 지각: 조회 기간 안의 전체 건수와 근로자별 누적 횟수
+    const lateByWorker = new Map<string, number>();
+    let lateCount = 0;
+    for (const r of records) {
+      if (getLateMinutes(r.checkInAt, settings) > 0) {
+        lateCount += 1;
+        lateByWorker.set(r.workerId, (lateByWorker.get(r.workerId) || 0) + 1);
+      }
+    }
+    return { totalDays, totalHours, missingCheckout, uniqueWorkers, lateCount, lateByWorker };
+  }, [records, todayYmd, settings]);
 
   const isMissingCheckout = (r: AttendanceRecord) =>
     r.checkInAt && !r.checkOutAt && r.workDate < todayYmd;
 
   // "퇴근 미체크" 카드를 누르면 해당 기록만 보여준다. 요약 카드 숫자는 항상 전체(records) 기준.
   const visibleRecords = useMemo(
-    () => (onlyMissing ? records.filter((r) => isMissingCheckout(r)) : records),
+    () =>
+      onlyMissing
+        ? records.filter((r) => isMissingCheckout(r))
+        : onlyLate
+          ? records.filter((r) => getLateMinutes(r.checkInAt, settings) > 0)
+          : records,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [records, onlyMissing, todayYmd]
+    [records, onlyMissing, onlyLate, todayYmd, settings]
   );
 
   // 미체크 건을 모두 처리해 0건이 되면 빈 화면에 갇히지 않도록 필터를 자동 해제한다.
   useEffect(() => {
     if (onlyMissing && !loading && summary.missingCheckout === 0) setOnlyMissing(false);
-  }, [onlyMissing, loading, summary.missingCheckout]);
+    if (onlyLate && !loading && summary.lateCount === 0) setOnlyLate(false);
+  }, [onlyMissing, onlyLate, loading, summary.missingCheckout, summary.lateCount]);
 
   const formatWorkDate = (workDate: string) => {
     const weekday = getWeekdayLabel(workDate);
@@ -976,7 +993,7 @@ export const AttendanceTab: React.FC = () => {
       </div>
 
       {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryCard
           icon={<Briefcase className="w-4 h-4" />}
           label="조회 인원"
@@ -1003,20 +1020,44 @@ export const AttendanceTab: React.FC = () => {
           active={onlyMissing}
           hint={onlyMissing ? "전체 보기" : summary.missingCheckout > 0 ? "눌러서 이것만 보기" : undefined}
           onClick={
-            summary.missingCheckout > 0 || onlyMissing ? () => setOnlyMissing((prev) => !prev) : undefined
+            summary.missingCheckout > 0 || onlyMissing
+              ? () => {
+                  setOnlyLate(false);
+                  setOnlyMissing((prev) => !prev);
+                }
+              : undefined
+          }
+        />
+        <SummaryCard
+          icon={<Clock className="w-4 h-4" />}
+          label="지각"
+          value={`${summary.lateCount} 건`}
+          tone={summary.lateCount > 0 ? "amber" : "slate"}
+          active={onlyLate}
+          hint={onlyLate ? "전체 보기" : summary.lateCount > 0 ? "눌러서 이것만 보기" : undefined}
+          onClick={
+            summary.lateCount > 0 || onlyLate
+              ? () => {
+                  setOnlyMissing(false);
+                  setOnlyLate((prev) => !prev);
+                }
+              : undefined
           }
         />
       </div>
 
-      {onlyMissing && (
+      {(onlyMissing || onlyLate) && (
         <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
           <span className="flex items-center gap-1.5 font-semibold">
             <AlertCircle className="w-4 h-4" />
-            퇴근 미체크 {visibleRecords.length}건만 보는 중
+            {onlyMissing ? "퇴근 미체크" : "지각"} {visibleRecords.length}건만 보는 중
           </span>
           <button
             type="button"
-            onClick={() => setOnlyMissing(false)}
+            onClick={() => {
+              setOnlyMissing(false);
+              setOnlyLate(false);
+            }}
             className="rounded border border-rose-300 bg-white px-2.5 py-1 font-bold text-rose-700 hover:bg-rose-100"
           >
             전체 보기
@@ -1106,6 +1147,7 @@ export const AttendanceTab: React.FC = () => {
                       <LogIn className="w-3 h-3" />
                       {formatZonedTime(r.checkInAt, tz)}
                       <OffSiteBadge within={r.checkInWithinGeo} distanceM={r.checkInDistanceM} />
+                      <LateBadge minutes={getLateMinutes(r.checkInAt, settings)} total={summary.lateByWorker.get(r.workerId) || 0} />
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 ${
@@ -1265,6 +1307,7 @@ export const AttendanceTab: React.FC = () => {
                         <LogIn className="w-3 h-3" />
                         {formatZonedTime(r.checkInAt, tz)}
                         <OffSiteBadge within={r.checkInWithinGeo} distanceM={r.checkInDistanceM} />
+                      <LateBadge minutes={getLateMinutes(r.checkInAt, settings)} total={summary.lateByWorker.get(r.workerId) || 0} />
                       </span>
                     </Td>
                     <Td
@@ -1687,11 +1730,26 @@ const OffSiteBadge: React.FC<{ within: boolean | null; distanceM: number | null 
   );
 };
 
+// 출근이 기준 시각(기본 출근 시각)을 넘긴 기록에만 보이는 표시. total = 조회 기간 안 그 근로자의 지각 누적 횟수.
+const LateBadge: React.FC<{ minutes: number; total: number }> = ({ minutes, total }) => {
+  if (minutes <= 0) return null;
+  return (
+    <span
+      title={`출근 기준 시각보다 ${formatLateDuration(minutes)} 늦게 출근했습니다. 조회 기간 누적 ${total}회.`}
+      className="ml-1 inline-flex items-center gap-0.5 whitespace-nowrap rounded border border-rose-300 bg-rose-50 px-1 py-px text-[10px] font-bold text-rose-700"
+    >
+      <Clock className="w-2.5 h-2.5" />
+      지각 {formatLateDuration(minutes)}
+      {total > 1 ? ` · 누적 ${total}회` : ""}
+    </span>
+  );
+};
+
 const SummaryCard: React.FC<{
   icon: React.ReactNode;
   label: string;
   value: string;
-  tone: "slate" | "emerald" | "blue" | "rose";
+  tone: "slate" | "emerald" | "blue" | "rose" | "amber";
   /** 지정하면 카드가 버튼이 된다(목록 필터 토글용). */
   onClick?: () => void;
   active?: boolean;
@@ -1702,6 +1760,7 @@ const SummaryCard: React.FC<{
     emerald: "bg-emerald-50 border-emerald-200 text-emerald-800",
     blue:    "bg-blue-50 border-blue-200 text-blue-800",
     rose:    "bg-rose-50 border-rose-200 text-rose-800",
+    amber:   "bg-amber-50 border-amber-200 text-amber-800",
   }[tone];
 
   const body = (
