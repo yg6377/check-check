@@ -23,9 +23,11 @@ import {
   QrCode,
   RefreshCw,
   Printer,
+  Plug,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { SiteLocationEditor } from "./SiteLocationEditor";
+import { McpSettingsPanel } from "./McpSettingsPanel";
 
 export const SettingsTab: React.FC = () => {
   const { settings, updateSetting, holidays, addHoliday, deleteHoliday, history, regenerateSiteCheckinCode } = useFirebase();
@@ -85,6 +87,8 @@ export const SettingsTab: React.FC = () => {
     setTimeout(() => win.print(), 250);
   };
   const [activeSubTab, setActiveSubTab] = useState<string>("site");
+  // 현장 주소 입력란에서 Enter → 지도(SiteLocationEditor)가 그 주소의 좌표를 찾는다
+  const [addressSearch, setAddressSearch] = useState<{ address: string; nonce: number } | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
 
   // Holiday forms
@@ -496,6 +500,16 @@ export const SettingsTab: React.FC = () => {
           <ChevronRight className="w-3 h-3 opacity-60" />
         </button>
 
+        <button
+          onClick={() => setActiveSubTab("mcp")}
+          className={`w-full flex items-center justify-between text-left text-xs px-3 py-2 rounded-md transition font-semibold cursor-pointer ${
+            activeSubTab === "mcp" ? "bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold" : "text-slate-650 hover:bg-slate-50"
+          }`}
+        >
+          <span className="flex items-center gap-2"><Plug className="w-3.5 h-3.5 text-blue-500" /> MCP 서버 설정</span>
+          <ChevronRight className="w-3 h-3 opacity-60" />
+        </button>
+
         <div className="pt-2.5 border-t border-slate-100">
           <button
             onClick={() => setActiveSubTab("history")}
@@ -540,8 +554,17 @@ export const SettingsTab: React.FC = () => {
                     type="text"
                     value={settings.site.siteAddress}
                     onChange={(e) => updateSetting("site", { ...settings.site, siteAddress: e.target.value })}
+                    onKeyDown={(e) => {
+                      // 한글 조합 중 Enter 는 글자 확정이므로 건너뛴다
+                      if (e.key !== "Enter" || e.nativeEvent.isComposing) return;
+                      e.preventDefault();
+                      setAddressSearch({ address: e.currentTarget.value, nonce: Date.now() });
+                    }}
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-gray-300"
                   />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    주소를 입력하고 Enter를 누르면 오른쪽 지도가 그 위치로 이동합니다.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1">매달 정기 급여 지급일 (Payment Day)</label>
@@ -577,6 +600,7 @@ export const SettingsTab: React.FC = () => {
               <SiteLocationEditor
                 site={settings.site}
                 onSave={(next) => updateSetting("site", { ...settings.site, ...next })}
+                addressSearch={addressSearch}
               />
             </div>
 
@@ -1087,6 +1111,8 @@ export const SettingsTab: React.FC = () => {
         )}
 
         {activeSubTab === "manDayTable" && <ManDayTableEditor />}
+
+        {activeSubTab === "mcp" && <McpSettingsPanel />}
 
         {activeSubTab === "ordinaryWage" && (
           <form onSubmit={saveOrdinaryWage} className="space-y-6">

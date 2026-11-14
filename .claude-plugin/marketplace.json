@@ -1,0 +1,13 @@
+{
+  "name": "check-check",
+  "owner": {
+    "name": "Check Check"
+  },
+  "plugins": [
+    {
+      "name": "check-check",
+      "source": "./plugin",
+      "description": "Check Check 근태 기록을 읽어 엑셀 노무대장 양식을 채우는 /checkin 스킬"
+    }
+  ]
+}

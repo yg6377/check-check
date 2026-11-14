@@ -1,0 +1,5 @@
+{
+  "name": "check-check",
+  "version": "0.1.0",
+  "description": "Check Check 근태 기록을 읽어 엑셀 노무대장 양식을 채우는 /checkin 스킬"
+}
