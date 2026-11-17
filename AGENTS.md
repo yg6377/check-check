@@ -57,7 +57,7 @@ npm run lint                 # tsc --noEmit — 프런트 검증 수단 (supabas
 │   ├── policies.sql                # RLS 정책 (재실행 안전)
 │   ├── seed.sql                    # settings 8종 + 공휴일 시드 (멱등)
 │   ├── bootstrap_first_admin.sql   # 첫 관리자 계정 생성 안내
-│   ├── migrations/001~012_*.sql    # 순차 적용 마이그레이션
+│   ├── migrations/001~013_*.sql    # 순차 적용 마이그레이션
 │   ├── config.toml                 # Edge Function 배포 옵션 (verify_jwt = false)
 │   └── functions/                  # Edge Function (Deno — tsc 검사 제외)
 │       ├── health/                 # 대시보드용 운영 지표 (집계만)
@@ -139,6 +139,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 | `010_worker_has_vehicle` | `workers.has_vehicle` — 자가운전보조금 비과세 분리용 |
 | `011_expand_attendance_statuses` | `attendance.status` check 제약 확장 |
 | `012_geo_attendance` | `submit_attendance`에 위치 인자(`p_lat`/`p_lng`/`p_accuracy`, 기본 NULL) 추가 + `check_in/out_accuracy_m` 컬럼 |
+| `013_night_shift_checkout` | `submit_attendance`: 다음 날 퇴근을 전날 미퇴근 기록에 연결 (야간조) |
 
 운영 DB에는 Supabase 마이그레이션 이력 테이블이 비어 있습니다(001~011은 SQL 편집기로 수동 적용). 012부터 이력에 남습니다. **파일이 있다고 운영에 적용됐다고 가정하지 말고 실제 DB를 확인하세요.**
 
@@ -170,13 +171,13 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 - **위치 기록(012):** `WorkerPortal`이 스캐너를 열 때 `navigator.geolocation`을 병렬로 요청하고, 좌표가 있으면 `submit_attendance(scanned_code, action, p_lat, p_lng, p_accuracy)`로 함께 보냅니다. 서버가 haversine 거리를 계산해 `attendance.check_in/out_lat·lng·accuracy_m·distance_m·within_geo`에 씁니다. 좌표가 없으면 전부 NULL. 위치 계산은 별도 예외 블록 안에 있어 어떤 입력에도 타각을 실패시키지 않습니다.
 - **주소로 좌표 찾기:** 현장 주소란에서 Enter → `geo.ts`의 `geocodeAddress()`(OpenStreetMap Nominatim, 키 없음)가 좌표를 찾아 지도 draft만 옮깁니다(저장은 관리자가 직접). 시골 도로명 주소는 읍·시 단위까지만 찾아지므로 "대략적인 위치" 안내를 띄웁니다. 정확도를 높이려면 이 함수만 카카오 주소 검색 등으로 바꾸면 됩니다.
 - **`settings.site.siteLocationSet`이 `true`일 때만 거리·반경 판정을 합니다.** 관리자가 `SiteLocationEditor`(Leaflet + OpenStreetMap, "현재 위치를 기준점으로" 버튼)에서 저장하면 true가 됩니다. 좌표 값으로 "미설정"을 추측하지 마세요 — 운영 DB에는 예전 가짜 지도를 눌러 생긴 `37.123, 126.457`이 들어 있었고, 시드 더미 `37.1234, 126.4567`과 달라 값 비교로는 걸러지지 않았습니다. 프런트 판정은 `utils/geo.ts`의 `isSiteLocationUnset()`.
-- 인자 3개에 기본값이 있어 옛 버전 PWA의 2인자 호출도 그대로 동작합니다. 이 함수를 다시 고칠 때는 오버로드가 두 개 남지 않도록 기존 시그니처를 DROP하고 012 정의를 기준으로 전체를 재작성하세요.
+- 인자 3개에 기본값이 있어 옛 버전 PWA의 2인자 호출도 그대로 동작합니다. 이 함수를 다시 고칠 때는 오버로드가 두 개 남지 않도록 기존 시그니처를 DROP하고 최신 정의(013)를 기준으로 전체를 재작성하세요.
 - 관리자 화면: `AttendanceTab`의 출퇴근 시각 옆 "현장 밖 · 거리" 배지(`within_geo === false`일 때만). `health` Edge Function의 "현장 밖 타각" 지표도 같은 컬럼을 봅니다.
 - geolocation은 HTTPS에서만 동작합니다. `npm run dev`(http, 0.0.0.0)로 띄운 실기기에서는 위치가 잡히지 않는 것이 정상입니다.
 
 **"출퇴근이 반경 밖에서도 찍힌다"는 제보는 버그가 아니라 사양입니다.** 차단으로 바꾸려면 사용자 결정이 먼저 필요합니다.
 
-**알려진 한계 — 야간조 퇴근:** `submit_attendance`는 근무일자를 "찍는 순간의 KST 날짜"로 정합니다. 저녁에 출근해 다음 날 새벽에 퇴근을 찍으면 그날 출근 행이 없어 "출근 체크가 먼저 필요합니다"로 거부됩니다. 지금은 관리자가 `AttendanceTab`에서 퇴근을 수동 입력해야 합니다.
+**야간조 퇴근(013):** `submit_attendance`는 근무일자를 "찍는 순간의 KST 날짜"로 정하지만, 퇴근일 때 오늘 출근 기록이 없으면 **전날의 미퇴근 기록(출근 후 18시간 이내)**에 퇴근을 기록하고 그 근무일을 반환합니다. 근로자 화면도 같은 기준으로 "지금 근무"를 고릅니다(`SupabaseContext.tsx`의 `OPEN_SHIFT_MAX_HOURS = 18` — SQL의 `interval '18 hours'`와 **같이 바꿔야 함**). 관리자 수동 입력(`AttendanceTab`)은 퇴근이 출근보다 이른 시각이면 다음 날 퇴근으로 저장합니다. 확정된 기록의 출퇴근 시각을 수정하면 `upsertAttendanceByAdmin`이 `attendance_segments`를 지워 확정을 풉니다(옛 시각 기준 확정값이 남지 않도록).
 
 ### 근태 정산 확정 흐름
 
@@ -285,7 +286,7 @@ AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 �
 - **겉모습은 `src/index.css`의 `@theme` 토큰으로 바꿉니다.** 색(slate·gray·stone을 같은 중립색으로 통일, blue가 포인트 색)·모서리·그림자·글꼴(Pretendard)이 여기서 정해집니다. 관리자가 고령이라 **화면 배치(탭 순서, 버튼 위치, 표의 열, 문구)는 바꾸지 않는다**는 것이 사용자 요청입니다. 디자인을 손볼 때 컴포넌트의 레이아웃 클래스를 건드리지 마세요.
 - 앱 아이콘(`public/icons/`)은 가방+시계 그림 한 장을 크기만 달리한 것입니다(512는 maskable 겸용).
 
-- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `013_`입니다.
+- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `014_`입니다.
 - **RPC 함수를 고칠 때는 최신 정의를 찾아 전체를 재작성.** `create_or replace`가 누적되어 있어 부분 수정이 불가능합니다.
 - 컬럼 추가 시 손대야 하는 곳: 마이그레이션 SQL → `types.ts` → `SupabaseContext.tsx`의 `dbToWorker()` 어댑터 → `create_worker_with_account` RPC → `WorkerTab.tsx` 폼. **하나라도 빠지면 조용히 값이 유실됩니다.**
 - 모든 mutation은 `settings_history`에 로그를 남기는 패턴 — 신규 CRUD 추가 시 동일 패턴 유지.

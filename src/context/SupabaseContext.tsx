@@ -178,6 +178,10 @@ export interface WorkerCredentials {
   passwordGenerated: boolean;
 }
 
+// 전날 출근 후 이 시간 안이면 "아직 근무 중인 야간조"로 보고 다음 날 퇴근을 받는다.
+// submit_attendance RPC(013)의 interval '18 hours' 와 같은 값이어야 한다.
+const OPEN_SHIFT_MAX_HOURS = 18;
+
 export interface TodayAttendance {
   id: string | null;
   workDate: string;
@@ -617,12 +621,22 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     // 서버(submit_attendance)가 Asia/Seoul 기준으로 work_date 를 찍으므로 동일 타임존으로 오늘을 구한다.
     const ymd = getZonedYmd(new Date(), getAppTimeZone(settings));
+    // 야간조: 전날 출근하고 아직 퇴근하지 않았으면 그 기록이 "지금 근무"다.
+    const [yy, mm, dd] = ymd.split("-").map(Number);
+    const prevYmd = new Date(Date.UTC(yy, mm - 1, dd - 1)).toISOString().slice(0, 10);
 
-    const { data, error } = await supabase
+    const { data: rows, error } = await supabase
       .from("attendance")
       .select("id, work_date, check_in_at, check_out_at")
-      .eq("work_date", ymd)
-      .maybeSingle();
+      .in("work_date", [prevYmd, ymd]);
+
+    const todayRow = rows?.find((r) => r.work_date === ymd) ?? null;
+    const prevRow = rows?.find((r) => r.work_date === prevYmd) ?? null;
+    const prevIsOpenShift =
+      !!prevRow?.check_in_at &&
+      !prevRow.check_out_at &&
+      Date.now() - new Date(prevRow.check_in_at).getTime() < OPEN_SHIFT_MAX_HOURS * 3600_000;
+    const data = todayRow?.check_in_at ? todayRow : prevIsOpenShift ? prevRow : todayRow;
 
     if (error) {
       console.error("todayAttendance load error:", error);
@@ -775,6 +789,18 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .from("attendance")
       .upsert(payload, { onConflict: "worker_id,work_date" });
     if (error) throw new Error(translateRpcError(error.message));
+
+    // 확정된 기록의 출퇴근 시각을 바꾸면 확정값(attendance_segments)은 옛 시각 기준이라 틀리게 된다.
+    // 확정을 풀어 새 시각으로 다시 계산되게 한다 (관리자가 검토 후 다시 확정).
+    const sameInstant = (a: string | null, b: string | null) =>
+      (a ? new Date(a).getTime() : null) === (b ? new Date(b).getTime() : null);
+    if (
+      existing &&
+      (!sameInstant(existing.check_in_at, input.checkInAt) || !sameInstant(existing.check_out_at, input.checkOutAt))
+    ) {
+      const { error: segError } = await supabase.from("attendance_segments").delete().eq("attendance_id", existing.id);
+      if (segError) throw new Error(translateRpcError(segError.message));
+    }
 
     await logHistory({
       category: "attendance",
