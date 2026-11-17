@@ -84,6 +84,11 @@ const ATTENDANCE_STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = 
   { value: "holiday_work", label: "휴일근무" },
 ];
 
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 // 이 시각(설정 타임존 벽시계 기준) 이전 출근 타각은 이례적인 것으로 보고 빨간색으로 표시한다.
 const EARLY_CHECK_IN_LIMIT_MINUTES = 6 * 60;
 
@@ -160,6 +165,7 @@ export const AttendanceTab: React.FC = () => {
   const [manualCheckOut, setManualCheckOut] = useState("");
   const [manualStatus, setManualStatus] = useState<AttendanceStatus>("normal");
   const [manualNote, setManualNote] = useState("관리자 수동 입력");
+  const [manualWasConfirmed, setManualWasConfirmed] = useState(false);
 
   // 급여명세서 발급 대상 선택 모달
   const [payslipPickerOpen, setPayslipPickerOpen] = useState(false);
@@ -602,6 +608,7 @@ export const AttendanceTab: React.FC = () => {
 
   const openManualModal = (record?: AttendanceRecord) => {
     setManualError("");
+    setManualWasConfirmed(Boolean(record?.confirmedBreakdown));
     if (record) {
       setManualWorkerId(record.workerId);
       setManualWorkDate(record.workDate);
@@ -620,6 +627,8 @@ export const AttendanceTab: React.FC = () => {
     }
     setManualModalOpen(true);
   };
+
+  const manualCheckOutNextDay = !!manualCheckIn && !!manualCheckOut && manualCheckOut < manualCheckIn;
 
   const closeManualModal = () => {
     if (manualSaving) return;
@@ -642,10 +651,12 @@ export const AttendanceTab: React.FC = () => {
       setManualError("퇴근 시각만 단독으로 저장할 수 없습니다.");
       return;
     }
-    if (manualCheckIn && manualCheckOut && manualCheckOut <= manualCheckIn) {
-      setManualError("퇴근 시각은 출근 시각보다 늦어야 합니다.");
+    if (manualCheckIn && manualCheckOut && manualCheckOut === manualCheckIn) {
+      setManualError("퇴근 시각이 출근 시각과 같습니다.");
       return;
     }
+    // 퇴근이 출근보다 이르면 자정을 넘긴 근무(야간조)로 보고 다음 날 퇴근으로 저장한다.
+    const checkOutDate = manualCheckOutNextDay ? addDaysYmd(manualWorkDate, 1) : manualWorkDate;
 
     setManualSaving(true);
     try {
@@ -653,7 +664,7 @@ export const AttendanceTab: React.FC = () => {
         workerId: manualWorkerId,
         workDate: manualWorkDate,
         checkInAt: manualCheckIn ? zonedWallTimeToUtcIso(manualWorkDate, manualCheckIn, tz) : null,
-        checkOutAt: manualCheckOut ? zonedWallTimeToUtcIso(manualWorkDate, manualCheckOut, tz) : null,
+        checkOutAt: manualCheckOut ? zonedWallTimeToUtcIso(checkOutDate, manualCheckOut, tz) : null,
         status: manualStatus,
         note: manualNote.trim() || "관리자 수동 입력",
       });
@@ -1525,6 +1536,18 @@ export const AttendanceTab: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {manualWasConfirmed && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-800">
+                  이미 <b>확정</b>된 기록입니다. 출근·퇴근 시각을 바꾸면 확정이 풀리고 공수·시간이 새 시각으로 다시 계산됩니다. 확인 후 다시 확정해 주세요.
+                </div>
+              )}
+
+              {manualCheckOutNextDay && (
+                <div className="p-2.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-700">
+                  퇴근이 출근보다 이른 시각이라 <b>다음 날({addDaysYmd(manualWorkDate, 1)}) {manualCheckOut} 퇴근</b>으로 저장됩니다. (야간조)
+                </div>
+              )}
 
               {manualError && (
                 <div className="p-2.5 bg-rose-50 border border-rose-200 rounded text-[11px] text-rose-700 flex items-center gap-1.5">
