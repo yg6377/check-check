@@ -72,7 +72,7 @@ export const McpSettingsPanel: React.FC = () => (
         label="① 서버 등록 (터미널에서 한 번 실행)"
         value={`claude mcp add --transport http --scope user check-check ${MCP_URL} --header "Authorization: Bearer $(cat ${TOKEN_FILE})"`}
       />
-      <CopyRow label="② 플러그인 저장소 추가" value="claude plugin marketplace add yg6377/checkin-app" />
+      <CopyRow label="② 플러그인 저장소 추가" value="claude plugin marketplace add yg6377/check-check" />
       <CopyRow label="③ 플러그인 설치" value="claude plugin install check-check@check-check" />
       <p className="text-xs text-gray-500 leading-relaxed">
         설치 후 Claude Code에서 <code className="font-mono text-[11px]">/checkin 11월</code> 처럼 입력하면 그 달의 근태를

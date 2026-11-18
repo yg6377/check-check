@@ -126,7 +126,7 @@ deno test --no-check --sloppy-imports --allow-read --allow-env supabase/function
 한 달 근태를 읽어 엑셀 노무대장 양식의 출근·퇴근 칸을 채웁니다. (읽기 전용 MCP 서버 사용)
 
 ```bash
-/plugin install check-check --marketplace yg6377/checkin-app
+/plugin install check-check --marketplace yg6377/check-check
 ```
 
 준비물 (저장소에는 넣지 않습니다 — 개인정보·비밀값):
