@@ -140,6 +140,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 | `011_expand_attendance_statuses` | `attendance.status` check 제약 확장 |
 | `012_geo_attendance` | `submit_attendance`에 위치 인자(`p_lat`/`p_lng`/`p_accuracy`, 기본 NULL) 추가 + `check_in/out_accuracy_m` 컬럼 |
 | `013_night_shift_checkout` | `submit_attendance`: 다음 날 퇴근을 전날 미퇴근 기록에 연결 (야간조) |
+| `014_night_shift_snap_rules` | (데이터) `settings.overtimeRules.snapRules`에 야간조 출퇴근 보정 규칙 + 자정 퇴근 규칙 추가. 같은 id가 있으면 건너뜀 |
 
 운영 DB에는 Supabase 마이그레이션 이력 테이블이 비어 있습니다(001~011은 SQL 편집기로 수동 적용). 012부터 이력에 남습니다. **파일이 있다고 운영에 적용됐다고 가정하지 말고 실제 DB를 확인하세요.**
 
@@ -159,7 +160,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 ### 타각 보정(스냅) — `attendanceHours.ts` + `types.ts:AttendanceSnapRule`
 
 "이 요일에 이 시간 구간에 찍으면 → 이 시각으로 인정"하는 규칙. `dayType`(weekday/saturday/sunday/holiday) × `kind`(in/out) × 구간 → `snapTo`.
-기본값은 `DEFAULT_SETTINGS.overtimeRules.snapRules`에 18개 정의되어 있고, 관리자가 `SettingsTab`에서 수정 가능합니다. 규칙에 걸리지 않는 타각은 **보정하지 않고 원본 시각 사용**.
+기본값은 `DEFAULT_SETTINGS.overtimeRules.snapRules`에 25개 정의되어 있고, 관리자가 `SettingsTab`에서 수정 가능합니다. **운영에서 쓰이는 것은 DB의 `settings.overtimeRules.snapRules`이지 기본값이 아닙니다** — `defaults.ts`에 규칙을 추가해도 운영에는 반영되지 않으니 데이터 마이그레이션(014 참고)을 같이 만드세요. 급여정산 테이블은 구간을 완주해야 공수를 주므로, **표에 있는 모든 시작·종료 시각에는 앞뒤 오차를 받아 주는 보정 규칙이 있어야 합니다.** 야간조 규칙이 없던 때에는 19:32 출근이 전반 0.75를 잃어 2공수가 1.25로 나왔습니다. 규칙에 걸리지 않는 타각은 **보정하지 않고 원본 시각 사용**.
 
 ### 출퇴근 검증 방식 — QR 검증 + 위치 기록
 
@@ -286,7 +287,7 @@ AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 �
 - **겉모습은 `src/index.css`의 `@theme` 토큰으로 바꿉니다.** 색(slate·gray·stone을 같은 중립색으로 통일, blue가 포인트 색)·모서리·그림자·글꼴(Pretendard)이 여기서 정해집니다. 관리자가 고령이라 **화면 배치(탭 순서, 버튼 위치, 표의 열, 문구)는 바꾸지 않는다**는 것이 사용자 요청입니다. 디자인을 손볼 때 컴포넌트의 레이아웃 클래스를 건드리지 마세요.
 - 앱 아이콘(`public/icons/`)은 가방+시계 그림 한 장을 크기만 달리한 것입니다(512는 maskable 겸용).
 
-- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `014_`입니다.
+- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `015_`입니다.
 - **RPC 함수를 고칠 때는 최신 정의를 찾아 전체를 재작성.** `create_or replace`가 누적되어 있어 부분 수정이 불가능합니다.
 - 컬럼 추가 시 손대야 하는 곳: 마이그레이션 SQL → `types.ts` → `SupabaseContext.tsx`의 `dbToWorker()` 어댑터 → `create_worker_with_account` RPC → `WorkerTab.tsx` 폼. **하나라도 빠지면 조용히 값이 유실됩니다.**
 - 모든 mutation은 `settings_history`에 로그를 남기는 패턴 — 신규 CRUD 추가 시 동일 패턴 유지.

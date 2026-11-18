@@ -80,16 +80,26 @@ export const DEFAULT_SETTINGS: AllSettings = {
       { id: "snap-wd-out-3", dayType: "weekday", kind: "out", fromTime: "21:00", toTime: "22:30", snapTo: "22:00" },
       // 자정 전후 퇴근 → 밤 12시(24:00)로 인정. 정산 테이블의 22:00~24:00 행을 채우기 위함
       { id: "snap-wd-out-4", dayType: "weekday", kind: "out", fromTime: "23:30", toTime: "00:30", snapTo: "00:00" },
+      // 야간조(평일 19:30~05:30). 출근 보정이 없으면 19:31 출근만으로 전반 0.75공수가 빠진다
+      { id: "snap-wd-in-n1", dayType: "weekday", kind: "in", fromTime: "18:30", toTime: "20:00", snapTo: "19:30" },
+      { id: "snap-wd-out-n1", dayType: "weekday", kind: "out", fromTime: "04:00", toTime: "04:59", snapTo: "04:30" },
+      { id: "snap-wd-out-n2", dayType: "weekday", kind: "out", fromTime: "05:00", toTime: "06:30", snapTo: "05:30" },
       // ── 토요일 (정규 08:00~16:00, 앞뒤 1시간 버퍼) ──
       { id: "snap-sat-in-0", dayType: "saturday", kind: "in", fromTime: "04:00", toTime: "05:30", snapTo: "05:00" },
       { id: "snap-sat-in-1", dayType: "saturday", kind: "in", fromTime: "07:00", toTime: "08:59", snapTo: "08:00" },
       { id: "snap-sat-out-1", dayType: "saturday", kind: "out", fromTime: "15:00", toTime: "16:59", snapTo: "16:00" },
       { id: "snap-sat-out-2", dayType: "saturday", kind: "out", fromTime: "17:30", toTime: "18:59", snapTo: "18:00" },
+      // 야간조(토요일 16:00~01:00)
+      { id: "snap-sat-in-n1", dayType: "saturday", kind: "in", fromTime: "15:00", toTime: "16:30", snapTo: "16:00" },
+      { id: "snap-sat-out-n1", dayType: "saturday", kind: "out", fromTime: "00:30", toTime: "01:59", snapTo: "01:00" },
       // ── 일요일 (정규 08:00~15:30, 앞뒤 1시간 버퍼) ──
       { id: "snap-sun-in-0", dayType: "sunday", kind: "in", fromTime: "04:00", toTime: "05:30", snapTo: "05:00" },
       { id: "snap-sun-in-1", dayType: "sunday", kind: "in", fromTime: "07:00", toTime: "08:59", snapTo: "08:00" },
       { id: "snap-sun-out-1", dayType: "sunday", kind: "out", fromTime: "14:30", toTime: "16:30", snapTo: "15:30" },
       { id: "snap-sun-out-2", dayType: "sunday", kind: "out", fromTime: "17:00", toTime: "17:59", snapTo: "17:30" },
+      // 야간조(일요일 15:30~24:00)
+      { id: "snap-sun-in-n1", dayType: "sunday", kind: "in", fromTime: "14:30", toTime: "16:00", snapTo: "15:30" },
+      { id: "snap-sun-out-n1", dayType: "sunday", kind: "out", fromTime: "23:30", toTime: "00:59", snapTo: "00:00" },
       // ── 공휴일 (정규 08:00~16:00, 앞뒤 1시간 버퍼) ──
       { id: "snap-hol-in-0", dayType: "holiday", kind: "in", fromTime: "04:00", toTime: "05:30", snapTo: "05:00" },
       { id: "snap-hol-in-1", dayType: "holiday", kind: "in", fromTime: "07:00", toTime: "08:59", snapTo: "08:00" },
