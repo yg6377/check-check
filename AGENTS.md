@@ -141,6 +141,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 | `012_geo_attendance` | `submit_attendance`에 위치 인자(`p_lat`/`p_lng`/`p_accuracy`, 기본 NULL) 추가 + `check_in/out_accuracy_m` 컬럼 |
 | `013_night_shift_checkout` | `submit_attendance`: 다음 날 퇴근을 전날 미퇴근 기록에 연결 (야간조) |
 | `014_night_shift_snap_rules` | (데이터) `settings.overtimeRules.snapRules`에 야간조 출퇴근 보정 규칙 + 자정 퇴근 규칙 추가. 같은 id가 있으면 건너뜀 |
+| `015_night_shift_out_0600` | (데이터) 평일 야간조 퇴근 보정을 05:00~05:59→05:30, 06:00~06:30→06:00으로 나눔 (시급제 06:00 인정) |
 
 운영 DB에는 Supabase 마이그레이션 이력 테이블이 비어 있습니다(001~011은 SQL 편집기로 수동 적용). 012부터 이력에 남습니다. **파일이 있다고 운영에 적용됐다고 가정하지 말고 실제 DB를 확인하세요.**
 
@@ -160,7 +161,7 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 ### 타각 보정(스냅) — `attendanceHours.ts` + `types.ts:AttendanceSnapRule`
 
 "이 요일에 이 시간 구간에 찍으면 → 이 시각으로 인정"하는 규칙. `dayType`(weekday/saturday/sunday/holiday) × `kind`(in/out) × 구간 → `snapTo`.
-기본값은 `DEFAULT_SETTINGS.overtimeRules.snapRules`에 25개 정의되어 있고, 관리자가 `SettingsTab`에서 수정 가능합니다. **운영에서 쓰이는 것은 DB의 `settings.overtimeRules.snapRules`이지 기본값이 아닙니다** — `defaults.ts`에 규칙을 추가해도 운영에는 반영되지 않으니 데이터 마이그레이션(014 참고)을 같이 만드세요. 급여정산 테이블은 구간을 완주해야 공수를 주므로, **표에 있는 모든 시작·종료 시각에는 앞뒤 오차를 받아 주는 보정 규칙이 있어야 합니다.** 야간조 규칙이 없던 때에는 19:32 출근이 전반 0.75를 잃어 2공수가 1.25로 나왔습니다. 규칙에 걸리지 않는 타각은 **보정하지 않고 원본 시각 사용**.
+기본값은 `DEFAULT_SETTINGS.overtimeRules.snapRules`에 26개 정의되어 있고, 관리자가 `SettingsTab`에서 수정 가능합니다. **운영에서 쓰이는 것은 DB의 `settings.overtimeRules.snapRules`이지 기본값이 아닙니다** — `defaults.ts`에 규칙을 추가해도 운영에는 반영되지 않으니 데이터 마이그레이션(014 참고)을 같이 만드세요. 급여정산 테이블은 구간을 완주해야 공수를 주므로, **표에 있는 모든 시작·종료 시각에는 앞뒤 오차를 받아 주는 보정 규칙이 있어야 합니다.** 야간조 규칙이 없던 때에는 19:32 출근이 전반 0.75를 잃어 2공수가 1.25로 나왔습니다. 규칙에 걸리지 않는 타각은 **보정하지 않고 원본 시각 사용**.
 
 ### 출퇴근 검증 방식 — QR 검증 + 위치 기록
 
@@ -205,6 +206,16 @@ Supabase Auth는 이메일을 요구하지만 사용자는 ID/비밀번호로 �
 - `dailyWorkerRules`의 `earlyMorning*` / `afternoonOvertime*` / `eveningOvertime*` / `holidayRate`는 일용·사업소득 공수에는 더 이상 쓰이지 않지만 **삭제 금지**: 시급제 연장 판정과 `payrollCalculator.ts` 시뮬레이터가 계속 씁니다.
 - 표를 바꿔도 이미 확정된 근태(`attendance_segments`)는 바뀌지 않고, 미확정 행만 새 규칙으로 계산됩니다.
 - **`attendanceHours.ts`·`datetime.ts`·`DEFAULT_MAN_DAY_TABLE`은 `supabase/functions/mcp/calc.ts`에 복사본이 있습니다(MCP 서버용). 한쪽을 고치면 다른 쪽도 같이 고치고 `calc.test.ts`를 돌리세요** — 아래 "읽기 전용 MCP 서버" 절 참고.
+
+### 시급·월급 야간조 시간 분해 (`calculateDailyBreakdown`)
+
+야간조 판정은 공수표와 같습니다(인정 출근 시각 ≥ `nightShiftStartTime`, 기본 15:00). 엑셀 노무대장과 맞춘 규칙:
+
+- **쉬는 시간:** 주간조는 `workTime` 점심시간, 야간조는 급여정산 테이블 **야간조 표의 식사시간 행**(`countable: false` + 공수 0, 요일 표 선택은 공수와 같음)을 근무시간과 야간시간에서 뺍니다. 점심시간은 야간조에 적용하지 않습니다.
+- **평일 정규·연장:** 주간조는 "기본 근무시간대(08~17시)와 겹친 시간"이 정규, 그 앞뒤가 연장입니다. **야간조는 하루 근무의 처음 8시간이 정규, 나머지가 연장**입니다(겹침 방식이면 밤 근무는 정규 0이 됨). 휴일은 원래대로 처음 8시간 휴일, 나머지 휴일연장.
+- 연장과 야간은 따로 더하는 값이 아닙니다. 야간은 근무시간 중 22~06시에 든 시간(가산)이라 정규·연장과 겹칩니다. 예: 평일 19:30~06:00 → 근무 9.5 = 정규 8 + 연장 1.5, 야간 7.
+- 엑셀 양식 '전체' 시트의 연장·야간 수식은 주간조 전제라 야간조 날에는 0이 나옵니다(아버님이 직접 입력). 앱이 기준입니다.
+- `excelExporter.ts`의 `splitDayHours`는 모든 고용유형에서 이 함수를 그대로 씁니다. 시간 분해를 다른 곳에 다시 구현하지 마세요.
 
 ### 지각 표시 (`attendanceHours.ts`의 `getLateMinutes`)
 
@@ -287,7 +298,7 @@ AI(Claude 등)가 앱 데이터를 읽어 사용자가 준 엑셀 노무대장 �
 - **겉모습은 `src/index.css`의 `@theme` 토큰으로 바꿉니다.** 색(slate·gray·stone을 같은 중립색으로 통일, blue가 포인트 색)·모서리·그림자·글꼴(Pretendard)이 여기서 정해집니다. 관리자가 고령이라 **화면 배치(탭 순서, 버튼 위치, 표의 열, 문구)는 바꾸지 않는다**는 것이 사용자 요청입니다. 디자인을 손볼 때 컴포넌트의 레이아웃 클래스를 건드리지 마세요.
 - 앱 아이콘(`public/icons/`)은 가방+시계 그림 한 장을 크기만 달리한 것입니다(512는 maskable 겸용).
 
-- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `015_`입니다.
+- **DB 변경은 반드시 새 마이그레이션 파일로.** `schema.sql`을 직접 수정하지 마세요 — 이미 배포된 DB에는 반영되지 않습니다. 다음 번호는 `016_`입니다.
 - **RPC 함수를 고칠 때는 최신 정의를 찾아 전체를 재작성.** `create_or replace`가 누적되어 있어 부분 수정이 불가능합니다.
 - 컬럼 추가 시 손대야 하는 곳: 마이그레이션 SQL → `types.ts` → `SupabaseContext.tsx`의 `dbToWorker()` 어댑터 → `create_worker_with_account` RPC → `WorkerTab.tsx` 폼. **하나라도 빠지면 조용히 값이 유실됩니다.**
 - 모든 mutation은 `settings_history`에 로그를 남기는 패턴 — 신규 CRUD 추가 시 동일 패턴 유지.

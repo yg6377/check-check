@@ -380,6 +380,25 @@ export function calculateManDaysFromTable(input: ManDayCalcInput): ManDayCalcRes
   return { manDays: Math.round(total * 10000) / 10000, shift, appliedRows };
 }
 
+/**
+ * 야간조 식사시간 — 급여정산 테이블 야간조 표에서 "합산 안 함(countable=false) + 공수 0" 행.
+ * (안내용 합계 행은 공수가 0이 아니라서 걸리지 않는다.)
+ * 시각은 야간조 기준으로 12:00 미만이면 다음 날(+24시간)로 본다. 공수표 계산과 같은 규칙.
+ */
+function getNightMealBreaks(table: ManDayRow[] | undefined, dayType: ManDayDayType): Array<[number, number]> {
+  const nightAdjust = (m: number) => (m < 720 ? m + 1440 : m);
+  const breaks: Array<[number, number]> = [];
+  for (const row of table ?? DEFAULT_MAN_DAY_TABLE) {
+    if (row.shift !== "night" || row.dayType !== dayType || row.countable || row.manDays !== 0) continue;
+    if (!isValidHHMM(row.fromTime) || !isValidHHMM(row.toTime)) continue;
+    const from = nightAdjust(hhmmToMinutes(row.fromTime));
+    let to = nightAdjust(hhmmToMinutes(row.toTime));
+    if (to <= from) to += 1440;
+    breaks.push([from, to]);
+  }
+  return breaks;
+}
+
 export interface DailyBreakdown {
   workHours: number; // 총 근무(점심 제외)
   regularHours: number; // 소정근로 (평일, standardDailyHours 한도)
@@ -445,30 +464,47 @@ export function calculateDailyBreakdown(
   // 자정 넘김 보정은 스냅 적용 후에 수행
   if (endMinutes <= startMinutes) endMinutes += 1440;
 
-  // 점심시간 차감
-  let breakMinutes = 0;
+  // 야간조 판정 — 공수표와 같은 기준(인정 출근 시각 ≥ 야간조 기준 출근시간, 기본 15:00)
+  const nightShiftStart = hhmmToMinutes(
+    isValidHHMM(dailyWorkerRules.nightShiftStartTime)
+      ? dailyWorkerRules.nightShiftStartTime
+      : DEFAULT_NIGHT_SHIFT_START_TIME
+  );
+  const isNightShift = ((startMinutes % 1440) + 1440) % 1440 >= nightShiftStart;
+  const manDayDayType = resolveManDayDayType(dayType, workDate);
+
+  // 쉬는 시간 차감 — 주간조는 점심시간, 야간조는 급여정산 테이블 야간조 표의 식사시간
   let lunchStart: number | undefined;
   let lunchEnd: number | undefined;
-  if (workTime.lunchStart && workTime.lunchEnd) {
+  const breaks: Array<[number, number]> = [];
+  if (isNightShift) {
+    breaks.push(...getNightMealBreaks(dailyWorkerRules.manDayTable, manDayDayType));
+  } else if (workTime.lunchStart && workTime.lunchEnd) {
     lunchStart = hhmmToMinutes(workTime.lunchStart);
     lunchEnd = hhmmToMinutes(workTime.lunchEnd);
     if (lunchEnd <= lunchStart) lunchEnd += 1440;
-    breakMinutes += overlapMinutes(startMinutes, endMinutes, lunchStart, lunchEnd);
-    if (endMinutes > 1440) {
-      breakMinutes += overlapMinutes(startMinutes, endMinutes, lunchStart + 1440, lunchEnd + 1440);
-    }
+    breaks.push([lunchStart, lunchEnd]);
+    if (endMinutes > 1440) breaks.push([lunchStart + 1440, lunchEnd + 1440]);
   }
+  let breakMinutes = 0;
+  for (const [bs, be] of breaks) breakMinutes += overlapMinutes(startMinutes, endMinutes, bs, be);
 
   const netHours = Math.max(0, (endMinutes - startMinutes - breakMinutes) / 60);
 
-  // 야간 시간대(예: 22:00~06:00) 겹침 — 가산 개념이라 별도 집계
+  // 야간 시간대(예: 22:00~06:00) 겹침 — 가산 개념이라 별도 집계. 그 안에 든 쉬는 시간은 뺀다
   const nightStart = hhmmToMinutes(overtimeRules.nightStart);
   let nightEnd = hhmmToMinutes(overtimeRules.nightEnd);
   if (nightEnd <= nightStart) nightEnd += 1440;
-  let nightMinutes = overlapMinutes(startMinutes, endMinutes, nightStart, nightEnd);
-  // 전날 야간대(00:00 이전부터 이어지는 06:00까지)와 익일 야간대 모두 검사
-  nightMinutes += overlapMinutes(startMinutes, endMinutes, nightStart - 1440, nightEnd - 1440);
-  nightMinutes += overlapMinutes(startMinutes, endMinutes, nightStart + 1440, nightEnd + 1440);
+  let nightMinutes = 0;
+  // 전날 야간대(00:00 이전부터 이어지는 06:00까지)·당일·익일 야간대 모두 검사
+  for (const shiftBy of [-1440, 0, 1440]) {
+    const ws = nightStart + shiftBy;
+    const we = nightEnd + shiftBy;
+    nightMinutes += overlapMinutes(startMinutes, endMinutes, ws, we);
+    for (const [bs, be] of breaks) {
+      nightMinutes -= overlapMinutes(startMinutes, endMinutes, Math.max(ws, bs), Math.min(we, be));
+    }
+  }
   const nightHours = Math.max(0, nightMinutes / 60);
 
   // ── 일용/사업소득자: 공수(man-day)는 "급여정산 테이블"에서 찾는다 ──
@@ -478,7 +514,7 @@ export function calculateDailyBreakdown(
     const { manDays } = calculateManDaysFromTable({
       inMinutes: startMinutes,
       outMinutes: endMinutes,
-      dayType: resolveManDayDayType(dayType, workDate),
+      dayType: manDayDayType,
       table: dailyWorkerRules.manDayTable,
       nightShiftStartTime: dailyWorkerRules.nightShiftStartTime,
     });
@@ -499,6 +535,18 @@ export function calculateDailyBreakdown(
       workHours: netHours,
       holidayHours: Math.min(netHours, standardHours),
       holidayOvertimeHours: Math.max(0, netHours - standardHours),
+      nightHours,
+    };
+  }
+
+  // 평일 야간조: 하루 근무의 처음 8시간이 정규, 나머지가 연장 (엑셀 노무대장과 같음).
+  // 주간조처럼 "08:00~17:00과 겹친 시간"으로 정규를 잡으면 밤 근무는 정규 0, 전부 연장이 된다.
+  if (isNightShift) {
+    return {
+      ...EMPTY_BREAKDOWN,
+      workHours: netHours,
+      regularHours: Math.min(netHours, standardHours),
+      overtimeHours: Math.max(0, netHours - standardHours),
       nightHours,
     };
   }
