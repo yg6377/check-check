@@ -83,7 +83,9 @@ export const DEFAULT_SETTINGS: AllSettings = {
       // 야간조(평일 19:30~05:30). 출근 보정이 없으면 19:31 출근만으로 전반 0.75공수가 빠진다
       { id: "snap-wd-in-n1", dayType: "weekday", kind: "in", fromTime: "18:30", toTime: "20:00", snapTo: "19:30" },
       { id: "snap-wd-out-n1", dayType: "weekday", kind: "out", fromTime: "04:00", toTime: "04:59", snapTo: "04:30" },
-      { id: "snap-wd-out-n2", dayType: "weekday", kind: "out", fromTime: "05:00", toTime: "06:30", snapTo: "05:30" },
+      { id: "snap-wd-out-n2", dayType: "weekday", kind: "out", fromTime: "05:00", toTime: "05:59", snapTo: "05:30" },
+      // 06시대 퇴근은 06:00 인정 — 시급제는 06:00까지 근무시간으로 친다(엑셀 노무대장). 일용 공수는 05:30 이후라 같음
+      { id: "snap-wd-out-n3", dayType: "weekday", kind: "out", fromTime: "06:00", toTime: "06:30", snapTo: "06:00" },
       // ── 토요일 (정규 08:00~16:00, 앞뒤 1시간 버퍼) ──
       { id: "snap-sat-in-0", dayType: "saturday", kind: "in", fromTime: "04:00", toTime: "05:30", snapTo: "05:00" },
       { id: "snap-sat-in-1", dayType: "saturday", kind: "in", fromTime: "07:00", toTime: "08:59", snapTo: "08:00" },

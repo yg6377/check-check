@@ -3,8 +3,8 @@ import { saveAs } from "file-saver";
 import { AllSettings, Worker, Holiday, SnapDayType } from "../types";
 import { AttendanceRecord } from "../context/SupabaseContext";
 import { getWorkerAllowances } from "./payrollCalculator";
-import { formatZonedTime, getAppTimeZone, getZonedClockMinutes } from "./datetime";
-import { calculateDailyBreakdown, getDayType, snapClockMinutes } from "./attendanceHours";
+import { formatZonedTime, getAppTimeZone } from "./datetime";
+import { calculateDailyBreakdown, getDayType } from "./attendanceHours";
 
 // ============================================================
 // 공통 헬퍼
@@ -67,24 +67,11 @@ function excelDateUTC(year: number, month1to12: number, day: number): Date {
   return new Date(Date.UTC(year, month1to12 - 1, day));
 }
 
-// 분 단위 [start, end) 겹침 길이 (분)
-function overlapMin(aStart: number, aEnd: number, bStart: number, bEnd: number): number {
-  return Math.max(0, Math.min(aEnd, bEnd) - Math.max(aStart, bStart));
-}
-
-// "HH:MM" → 분
-function hhmmToMin(s: string): number {
-  const [h, m] = s.split(":").map(Number);
-  return h * 60 + m;
-}
 
 /**
  * 하루 출퇴근 시각을 기본/연장/휴일/휴일연장/야간 시간으로 분해.
- * - 타각 보정 규칙(snapRules)으로 인정 시각을 먼저 보정한 뒤 계산 (화면 산정과 동일)
- * - 점심시간이 출퇴근 범위에 포함되면 1시간 차감
- * - 평일: 기본 = min(net, 8h), 연장 = max(0, net - 8h)
- * - 휴일: 휴일 = min(net, 8h), 휴일연장 = max(0, net - 8h)
- * - 야간: 22:00~06:00 범위에 걸친 분량 (별도 표기, 합산에서 빠지지 않음 — 참고용)
+ * 화면(근태 기록 탭)과 같은 calculateDailyBreakdown() 결과를 그대로 쓴다 — 계산을 여기서 다시 구현하지 않는다.
+ * - 시급/월급: 기본·연장·휴일·휴일연장·야간 시간 (야간조는 처음 8시간이 기본, 식사시간 차감)
  * - 일용/사업소득: 화면과 같은 calculateDailyBreakdown()(급여정산 테이블)의 공수를 base에 그대로 담는다.
  *   확정된 근태(getConfirmedDayHours)와 같은 모양이라 금액 = Σ공수 × 일급 이 된다.
  */
@@ -100,63 +87,16 @@ function splitDayHours(
     return { base: 0, overtime: 0, holiday: 0, holidayOvertime: 0, night: 0 };
   }
 
+  const b = calculateDailyBreakdown(checkInISO, checkOutISO, dayType, worker.employmentType, settings, workDate);
   if (worker.employmentType === "daily" || worker.employmentType === "business") {
-    const b = calculateDailyBreakdown(checkInISO, checkOutISO, dayType, worker.employmentType, settings, workDate);
     return { base: round2(b.manDays), overtime: 0, holiday: 0, holidayOvertime: 0, night: round2(b.nightHours) };
   }
-
-  const inDate = new Date(checkInISO);
-  const outDate = new Date(checkOutISO);
-  const isHoliday = dayType !== "weekday";
-
-  // 설정 타임존 기준 벽시계 분(分) 단위 → 타각 보정 규칙으로 인정 시각 스냅 (자정 넘김은 +1440)
-  const timeZone = getAppTimeZone(settings);
-  const startMin = snapClockMinutes(
-    getZonedClockMinutes(inDate, timeZone),
-    dayType,
-    "in",
-    settings.overtimeRules.snapRules
-  );
-  let endMin = snapClockMinutes(
-    getZonedClockMinutes(outDate, timeZone),
-    dayType,
-    "out",
-    settings.overtimeRules.snapRules
-  );
-  if (endMin <= startMin) endMin += 1440;
-
-  // 점심시간 (보통 12:00-13:00) 겹침 차감
-  const lunchStart = hhmmToMin(settings.workTime.lunchStart);
-  const lunchEnd = hhmmToMin(settings.workTime.lunchEnd);
-  const lunchOverlap = overlapMin(startMin, endMin, lunchStart, lunchEnd);
-
-  // 야간 (22:00 - 06:00 다음날)
-  const nightStartMin = hhmmToMin(settings.overtimeRules.nightStart); // 22:00 → 1320
-  const nightEndMin = hhmmToMin(settings.overtimeRules.nightEnd);     // 06:00 → 360
-  // 야간 윈도우: [22:00, 30:00) (=06:00 익일)
-  const nightOverlap = overlapMin(startMin, endMin, nightStartMin, 1440 + nightEndMin)
-    + overlapMin(startMin, endMin, 0, nightEndMin); // 당일 0~6시 부분
-  const nightHours = nightOverlap / 60;
-
-  const netMin = endMin - startMin - lunchOverlap;
-  const netHours = Math.max(0, netMin / 60);
-  const std = settings.workTime.standardDailyHours;
-
-  if (isHoliday) {
-    return {
-      base: 0,
-      overtime: 0,
-      holiday: Math.min(netHours, std),
-      holidayOvertime: Math.max(0, netHours - std),
-      night: nightHours,
-    };
-  }
   return {
-    base: Math.min(netHours, std),
-    overtime: Math.max(0, netHours - std),
-    holiday: 0,
-    holidayOvertime: 0,
-    night: nightHours,
+    base: round2(b.regularHours),
+    overtime: round2(b.overtimeHours),
+    holiday: round2(b.holidayHours),
+    holidayOvertime: round2(b.holidayOvertimeHours),
+    night: round2(b.nightHours),
   };
 }
 
